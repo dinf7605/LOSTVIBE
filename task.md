@@ -10,10 +10,10 @@
   - [x] 기본 `server.js` 서버 구조 설계 (정적 파일 서빙 및 기본 핑 테스트 엔드포인트)
   - *추천 커밋 메시지:* `Feat: Initialize Node/Express server boilerplate`
 
-- [ ] **Step 2: 백엔드 로스트아크 API 동적 프록시 라우터 구현**
-  - [ ] 프론트엔드가 전송할 `x-lostark-api-key` 헤더 가로채기 로직 구현
-  - [ ] `/api/calendar` (게임 캘린더) 중계 엔드포인트 구현
-  - [ ] `/api/market` (거래소/경매장 검색) 중계 엔드포인트 구현
+- [x] **Step 2: 백엔드 로스트아크 API 동적 프록시 라우터 구현**
+  - [x] 프론트엔드가 전송할 `x-lostark-api-key` 헤더 가로채기 로직 구현
+  - [x] `/api/calendar` (게임 캘린더) 중계 엔드포인트 구현
+  - [x] `/api/market` (거래소/경매장 검색) 중계 엔드포인트 구현
   - *추천 커밋 메시지:* `Feat: Add Lost Ark API proxy routes with user-key headers`
 
 - [ ] **Step 3: 백엔드 Gemini AI 분석 엔드포인트 구현**
