@@ -4,10 +4,10 @@
 
 ---
 
-- [ ] **Step 1: 프로젝트 초기화 및 백엔드 프레임워크 구축**
-  - [ ] `npm init` 프로젝트 초기화 및 기본 패키지(`express`, `dotenv`, `cors`, `node-fetch`) 설치
-  - [ ] `.env.example` 템플릿 생성
-  - [ ] 기본 `server.js` 서버 구조 설계 (정적 파일 서빙 및 기본 핑 테스트 엔드포인트)
+- [x] **Step 1: 프로젝트 초기화 및 백엔드 프레임워크 구축**
+  - [x] `npm init` 프로젝트 초기화 및 기본 패키지(`express`, `dotenv`, `cors`, `node-fetch`) 설치
+  - [x] `.env.example` 템플릿 생성
+  - [x] 기본 `server.js` 서버 구조 설계 (정적 파일 서빙 및 기본 핑 테스트 엔드포인트)
   - *추천 커밋 메시지:* `Feat: Initialize Node/Express server boilerplate`
 
 - [ ] **Step 2: 백엔드 로스트아크 API 동적 프록시 라우터 구현**
