@@ -26,9 +26,9 @@
   - [x] `public/index.css` 구축: HSL 기반 다크/네온 테마 토큰, Glassmorphism 카드, 호버 애니메이션 스타일링
   - *추천 커밋 메시지:* `Style: Build CSS design system and SPA layout shell`
 
-- [ ] **Step 5: 프론트엔드 SPA 라우터 및 오늘의 일정 캘린더 위젯 구현**
-  - [ ] hashchange 기반의 부드러운 SPA 탭 네비게이션 및 로컬스토리지 API Key 저장 모듈 구현
-  - [ ] 메인 홈 화면의 '오늘의 일정 캘린더' 위젯 연동 및 실시간 카운트다운 타이머 구현
+- [x] **Step 5: 프론트엔드 SPA 라우터 및 오늘의 일정 캘린더 위젯 구현**
+  - [x] hashchange 기반의 부드러운 SPA 탭 네비게이션 및 로컬스토리지 API Key 저장 모듈 구현
+  - [x] 메인 홈 화면의 '오늘의 일정 캘린더' 위젯 연동 및 실시간 카운트다운 타이머 구현
   - *추천 커밋 메시지:* `Feat: Implement SPA router and live schedule calendar widget`
 
 - [ ] **Step 6: 아비도스 제작 효율 계산기 및 영지 타이머 구현**
