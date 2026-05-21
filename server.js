@@ -140,11 +140,15 @@ ${JSON.stringify(specData, null, 2)}
   let aiResponseText = '';
   let errorDetails = null;
 
-  // 유저 요청에 따라 최신 정식 모델(gemini-2.5-flash)을 우선 탑재하고, 
-  // API 지원 여부 및 일시적 오류에 완벽하게 우회 대응하기 위해 순차적 모델 폴백 체인을 설계합니다.
+  // 유저가 제시한 분당/일일 사용 한도(RPD/RPM) 및 수학적/논리적 추론 효율 순위에 기초하여 
+  // 최적의 성능을 안정적으로 뿜어낼 수 있도록 AI 폴백 엔진의 우선순위를 정교하게 재배치합니다.
   const modelsToTry = [
+    'gemma-4-31b',
+    'gemma-4-26b',
+    'gemini-3.1-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3-flash',
     'gemini-2.5-flash',
-    'gemini-2.0-flash',
     'gemini-1.5-flash'
   ];
 
