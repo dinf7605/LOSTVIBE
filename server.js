@@ -30,6 +30,194 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// 로스트아크 실시간 시세 서버 캐시 객체
+let liveMarketCache = {
+  gems: null,
+  engravings: null,
+  lastUpdated: null,
+  error: null
+};
+
+// 실시간 시세 백그라운드 수집 스케줄러 구현 (API Key가 정의되었을 때만 작동)
+const startLiveMarketScheduler = () => {
+  const apiKey = process.env.LOSTARK_API_KEY;
+  if (!apiKey || apiKey === 'your_lostark_api_key_here') {
+    console.warn('⚠️ [Scheduler] LOSTARK_API_KEY가 설정되지 않아 실시간 시세 스케줄러를 작동하지 않습니다.');
+    return;
+  }
+
+  console.log('🚀 [Scheduler] 실시간 시세 수집 백그라운드 스케줄러를 작동합니다.');
+
+  // 주기적 실행 함수 (5분 = 300,000ms 간격, OpenAPI Rate Limit 완벽 방어)
+  const fetchIntervalMs = 300000;
+
+  const runSync = async () => {
+    try {
+      console.log(`[Scheduler] 실시간 시세 수집 시작... (${new Date().toLocaleTimeString()})`);
+      
+      // 1) 겁화 보석 리스트 수집 (DESC 내림차순 정렬)
+      const fireRes = await fetch('https://developer-lostark.game.onstove.com/markets/items', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'authorization': `bearer ${apiKey}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          Sort: 'CURRENT_MIN_PRICE',
+          CategoryCode: 210000,
+          CharacterClass: '',
+          ItemTier: 4,
+          ItemGrade: '',
+          ItemName: '겁화',
+          PageNo: 1,
+          SortCondition: 'DESC'
+        })
+      });
+
+      // 2) 작열 보석 리스트 수집 (DESC 내림차순 정렬)
+      const iceRes = await fetch('https://developer-lostark.game.onstove.com/markets/items', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'authorization': `bearer ${apiKey}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          Sort: 'CURRENT_MIN_PRICE',
+          CategoryCode: 210000,
+          CharacterClass: '',
+          ItemTier: 4,
+          ItemGrade: '',
+          ItemName: '작열',
+          PageNo: 1,
+          SortCondition: 'DESC'
+        })
+      });
+
+      // 3) 유물 각인서 Page 1 수집 (티어 제한 제거로 누락 없는 수집)
+      const page1Res = await fetch('https://developer-lostark.game.onstove.com/markets/items', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'authorization': `bearer ${apiKey}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          Sort: 'CURRENT_MIN_PRICE',
+          CategoryCode: 40000,
+          CharacterClass: '',
+          ItemGrade: '유물',
+          ItemName: '',
+          PageNo: 1,
+          SortCondition: 'DESC'
+        })
+      });
+
+      // 4) 유물 각인서 Page 2 수집
+      const page2Res = await fetch('https://developer-lostark.game.onstove.com/markets/items', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'authorization': `bearer ${apiKey}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          Sort: 'CURRENT_MIN_PRICE',
+          CategoryCode: 40000,
+          CharacterClass: '',
+          ItemGrade: '유물',
+          ItemName: '',
+          PageNo: 2,
+          SortCondition: 'DESC'
+        })
+      });
+
+      if (!fireRes.ok || !iceRes.ok || !page1Res.ok || !page2Res.ok) {
+        throw new Error(`OpenAPI 응답 에러 (보석: ${fireRes.status}/${iceRes.status}, 각인서: ${page1Res.status}/${page2Res.status})`);
+      }
+
+      const fireData = await fireRes.json();
+      const iceData = await iceRes.json();
+      const p1Data = await page1Res.json();
+      const p2Data = await page2Res.json();
+
+      const fireItems = fireData.Items || [];
+      const iceItems = iceData.Items || [];
+      const engravingItems = [...(p1Data.Items || []), ...(p2Data.Items || [])];
+
+      // --- 보석 가공 (7~10레벨 겁화/작열 8종) ---
+      const targetLevels = ['7레벨', '8레벨', '9레벨', '10레벨'];
+      const processedGems = [];
+
+      targetLevels.forEach(lvl => {
+        // 겁화 필터링
+        const fItem = fireItems.find(x => x.Name.includes(lvl));
+        if (fItem) {
+          processedGems.push({
+            Name: fItem.Name,
+            CurrentMinPrice: fItem.CurrentMinPrice,
+            YesterDayAveragePrice: fItem.YesterDayAveragePrice
+          });
+        }
+        // 작열 필터링
+        const iItem = iceItems.find(x => x.Name.includes(lvl));
+        if (iItem) {
+          processedGems.push({
+            Name: iItem.Name,
+            CurrentMinPrice: iItem.CurrentMinPrice,
+            YesterDayAveragePrice: iItem.YesterDayAveragePrice
+          });
+        }
+      });
+
+      // 레벨 내림차순 정렬 (10렙 -> 9렙 -> 8렙 -> 7렙 순)
+      processedGems.sort((a, b) => {
+        const getLvl = name => parseInt(name.match(/\d+/)?.[0] || 0);
+        const lvlA = getLvl(a.Name);
+        const lvlB = getLvl(b.Name);
+        if (lvlA !== lvlB) return lvlB - lvlA;
+        return a.Name.includes('겁화') ? -1 : 1;
+      });
+
+      // --- 각인서 가공 (중복 제거 및 상위 15종 정렬) ---
+      const uniqueEngravings = [];
+      const seen = new Set();
+      engravingItems.forEach(item => {
+        if (!seen.has(item.Name)) {
+          seen.add(item.Name);
+          uniqueEngravings.push({
+            Name: item.Name.replace(' 유물 각인서', '').replace('각인서', '').trim(),
+            FullName: item.Name, // 10종 프리셋 매칭용 원본 이름 보존
+            CurrentMinPrice: item.CurrentMinPrice,
+            YesterDayAveragePrice: item.YesterDayAveragePrice
+          });
+        }
+      });
+
+      uniqueEngravings.sort((a, b) => b.CurrentMinPrice - a.CurrentMinPrice);
+      const top15Engravings = uniqueEngravings.slice(0, 15);
+
+      // 캐시 갱신
+      liveMarketCache.gems = processedGems;
+      liveMarketCache.engravings = top15Engravings;
+      liveMarketCache.lastUpdated = Date.now();
+      liveMarketCache.error = null;
+
+      console.log(`[Scheduler] 실시간 시세 수집 완료 및 캐시 갱신 성공! (보석 ${processedGems.length}종, 각인서 ${top15Engravings.length}종)`);
+    } catch (err) {
+      console.error('[Scheduler] 실시간 시세 수집 중 오류 발생:', err.message);
+      liveMarketCache.error = err.message;
+    }
+  };
+
+  // 1) 즉시 최초 수집 실행 (서버 구동 시 초기 딜레이 방지)
+  runSync();
+
+  // 2) 5분 주기로 동작
+  setInterval(runSync, fetchIntervalMs);
+};
+
 // 로스트아크 API 공통 헤더 검증 미들웨어
 const verifyLostArkKey = (req, res, next) => {
   const apiKey = req.headers['x-lostark-api-key'];
@@ -201,6 +389,18 @@ ${JSON.stringify(specData, null, 2)}
 });
 
 
+// 4. 실시간 시세 대시보드 서버 캐싱 조회 API (GET 호출로 프론트엔드가 Rate Limit 걱정 없이 고속 서빙받음)
+app.get('/api/market/live-dashboard', (req, res) => {
+  res.json({
+    gems: liveMarketCache.gems,
+    engravings: liveMarketCache.engravings,
+    lastUpdated: liveMarketCache.lastUpdated,
+    error: liveMarketCache.error
+  });
+});
+
+
+
 
 // Start Server
 app.listen(PORT, () => {
@@ -209,4 +409,7 @@ app.listen(PORT, () => {
   console.log(`   - Local URL:   http://localhost:${PORT}`);
   console.log(`   - Environment: development`);
   console.log(`==================================================`);
+  
+  // 백그라운드 실시간 시세 스케줄러 기동
+  startLiveMarketScheduler();
 });

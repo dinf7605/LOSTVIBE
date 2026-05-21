@@ -78,16 +78,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 인기 유물 각인서 10종 가격 정보 (기본값 설정 및 실시간 시세 검색 연동)
     engravingPrices: [
-      { id: 'grudge', name: '원한 유물 각인서', searchName: '원한', price: 65000, isRealtime: false },
-      { id: 'adrenaline', name: '아드레날린 유물 각인서', searchName: '아드레날린', price: 58000, isRealtime: false },
-      { id: 'keen_blunt', name: '예리한 둔기 유물 각인서', searchName: '예리한 둔기', price: 42000, isRealtime: false },
-      { id: 'raid_captain', name: '돌격대장 유물 각인서', searchName: '돌격대장', price: 35000, isRealtime: false },
-      { id: 'hit_master', name: '타격 대장 유물 각인서', searchName: '타격 대장', price: 28000, isRealtime: false },
-      { id: 'ambush_master', name: '기습의 대가 유물 각인서', searchName: '기습의 대가', price: 24000, isRealtime: false },
-      { id: 'cursed_doll', name: '저주받은 인형 유물 각인서', searchName: '저주받은 인형', price: 22000, isRealtime: false },
-      { id: 'brawler', name: '결투의 대가 유물 각인서', searchName: '결투의 대가', price: 15000, isRealtime: false },
-      { id: 'mass_increase', name: '질량 증가 유물 각인서', searchName: '질량 증가', price: 8000, isRealtime: false },
-      { id: 'awakening', name: '각성 유물 각인서', searchName: '각성', price: 7000, isRealtime: false }
+      { id: 'grudge', name: '원한 유물 각인서', searchName: '원한', price: 0, isRealtime: false },
+      { id: 'adrenaline', name: '아드레날린 유물 각인서', searchName: '아드레날린', price: 0, isRealtime: false },
+      { id: 'keen_blunt', name: '예리한 둔기 유물 각인서', searchName: '예리한 둔기', price: 0, isRealtime: false },
+      { id: 'raid_captain', name: '돌격대장 유물 각인서', searchName: '돌격대장', price: 0, isRealtime: false },
+      { id: 'hit_master', name: '타격 대장 유물 각인서', searchName: '타격 대장', price: 0, isRealtime: false },
+      { id: 'ambush_master', name: '기습의 대가 유물 각인서', searchName: '기습의 대가', price: 0, isRealtime: false },
+      { id: 'cursed_doll', name: '저주받은 인형 유물 각인서', searchName: '저주받은 인형', price: 0, isRealtime: false },
+      { id: 'brawler', name: '결투의 대가 유물 각인서', searchName: '결투의 대가', price: 0, isRealtime: false },
+      { id: 'mass_increase', name: '질량 증가 유물 각인서', searchName: '질량 증가', price: 0, isRealtime: false },
+      { id: 'awakening', name: '각성 유물 각인서', searchName: '각성', price: 0, isRealtime: false }
     ],
 
     // AI 분석 타자기 상태
@@ -962,7 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
           Sort: 'CURRENT_MIN_PRICE',
           CategoryCode: 40000, // 각인서 카테고리
           CharacterClass: '',
-          ItemTier: 4,
+          // 유물 각인서는 티어 구분이 없으므로 ItemTier 필드를 제거하여 정상 수집 보장
           ItemGrade: '유물', // 유물 등급 각인서만 필터링
           ItemName: '',      // 전체 조회
           PageNo: 1,
@@ -1076,33 +1076,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 실시간 보석 대시보드 모의 데이터 백업 (API 미연동 또는 연결 오류 시 작동)
   const mockGems = [
-    { Name: '10레벨 겁화의 보석', CurrentMinPrice: 345000, YesterDayAveragePrice: 348000 },
-    { Name: '10레벨 작열의 보석', CurrentMinPrice: 162000, YesterDayAveragePrice: 165000 },
-    { Name: '9레벨 겁화의 보석', CurrentMinPrice: 115000, YesterDayAveragePrice: 114000 },
-    { Name: '9레벨 작열의 보석', CurrentMinPrice: 54000, YesterDayAveragePrice: 54500 },
-    { Name: '8레벨 겁화의 보석', CurrentMinPrice: 38000, YesterDayAveragePrice: 39000 },
-    { Name: '8레벨 작열의 보석', CurrentMinPrice: 18500, YesterDayAveragePrice: 18000 },
-    { Name: '7레벨 겁화의 보석', CurrentMinPrice: 12500, YesterDayAveragePrice: 12400 },
-    { Name: '7레벨 작열의 보석', CurrentMinPrice: 6200, YesterDayAveragePrice: 6300 }
+    { Name: '10레벨 겁화의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '10레벨 작열의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '9레벨 겁화의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '9레벨 작열의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '8레벨 겁화의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '8레벨 작열의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '7레벨 겁화의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '7레벨 작열의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0 }
   ];
 
   // 실시간 유물 각인서 대시보드 모의 데이터 백업 (상위 15종)
   const mockEngravingRank = [
-    { Name: '원한 유물 각인서', CurrentMinPrice: 65000, YesterDayAveragePrice: 62000 },
-    { Name: '아드레날린 유물 각인서', CurrentMinPrice: 58000, YesterDayAveragePrice: 59500 },
-    { Name: '예리한 둔기 유물 각인서', CurrentMinPrice: 42000, YesterDayAveragePrice: 42000 },
-    { Name: '돌격대장 유물 각인서', CurrentMinPrice: 35000, YesterDayAveragePrice: 34000 },
-    { Name: '타격 대장 유물 각인서', CurrentMinPrice: 28000, YesterDayAveragePrice: 29000 },
-    { Name: '기습의 대가 유물 각인서', CurrentMinPrice: 24000, YesterDayAveragePrice: 25000 },
-    { Name: '저주받은 인형 유물 각인서', CurrentMinPrice: 22000, YesterDayAveragePrice: 22000 },
-    { Name: '결투의 대가 유물 각인서', CurrentMinPrice: 15000, YesterDayAveragePrice: 16000 },
-    { Name: '질량 증가 유물 각인서', CurrentMinPrice: 8000, YesterDayAveragePrice: 7800 },
-    { Name: '각성 유물 각인서', CurrentMinPrice: 7000, YesterDayAveragePrice: 7200 },
-    { Name: '상급 소환사 유물 각인서', CurrentMinPrice: 6500, YesterDayAveragePrice: 6000 },
-    { Name: '점화 유물 각인서', CurrentMinPrice: 5800, YesterDayAveragePrice: 6200 },
-    { Name: '처단자 유물 각인서', CurrentMinPrice: 5500, YesterDayAveragePrice: 5300 },
-    { Name: '환류 유물 각인서', CurrentMinPrice: 3200, YesterDayAveragePrice: 3300 },
-    { Name: '절정 유물 각인서', CurrentMinPrice: 2800, YesterDayAveragePrice: 2900 }
+    { Name: '원한 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '아드레날린 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '예리한 둔기 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '돌격대장 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '타격 대장 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '기습의 대가 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '저주받은 인형 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '결투의 대가 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '질량 증가 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '각성 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '상급 소환사 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '점화 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '처단자 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '환류 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 },
+    { Name: '절정 유물 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0 }
   ];
 
   // 안전 캐싱(60초) 하에 실시간 데이터 로딩 제어 (API 호출 최소화 적용)
@@ -1141,6 +1141,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 비동기로 데이터 동시 수집 시작
     try {
+      console.log('[Dashboard] 서버 캐시 시세 조회를 시도합니다...');
+      const serverRes = await fetch('/api/market/live-dashboard');
+      if (serverRes.ok) {
+        const cacheData = await serverRes.json();
+        if (cacheData && cacheData.gems && cacheData.engravings && cacheData.gems.length > 0) {
+          console.log('[Dashboard] 서버 캐싱 시세를 수신하여 대시보드 렌더링을 진행합니다.');
+          
+          state.gemPrices = cacheData.gems;
+          state.topEngravings = cacheData.engravings;
+          state.lastMarketFetchTime = Date.now();
+
+          // 분배금 계산기 10종 프리셋 가격도 서버 시세로 실시간 동기화 전파
+          let hasUpdatedPresets = false;
+          state.engravingPrices.forEach(ep => {
+            const matched = cacheData.engravings.find(x => 
+              x.Name.includes(ep.searchName) || ep.searchName.includes(x.Name)
+            );
+            if (matched && matched.CurrentMinPrice > 0) {
+              ep.price = matched.CurrentMinPrice;
+              ep.isRealtime = true;
+              hasUpdatedPresets = true;
+            }
+          });
+
+          if (hasUpdatedPresets) {
+            renderEngravingPresets();
+          }
+
+          renderGemDashboard(cacheData.gems);
+          renderEngravingRankDashboard(cacheData.engravings);
+          return; // 성공했으므로 프론트엔드 직접 OpenAPI 조회는 건너뜀
+        }
+      }
+      
+      console.log('[Dashboard] 서버 캐시가 유효하지 않거나 비어 있어 로컬 OpenAPI 폴백을 시도합니다.');
       const [gems, engravings] = await Promise.all([
         updateLiveGemPricesFromApi(),
         updateTop15EngravingsFromApi()
@@ -1149,6 +1184,23 @@ document.addEventListener('DOMContentLoaded', () => {
       state.gemPrices = gems;
       state.topEngravings = engravings;
       state.lastMarketFetchTime = Date.now();
+
+      // 로컬 OpenAPI 조회로 가져온 각인서 시세를 분배금 계산기 프리셋에도 전파
+      let hasUpdatedPresetsLocal = false;
+      state.engravingPrices.forEach(ep => {
+        const matched = engravings.find(x => 
+          x.Name.includes(ep.searchName) || ep.searchName.includes(x.Name)
+        );
+        if (matched && matched.CurrentMinPrice > 0) {
+          ep.price = matched.CurrentMinPrice;
+          ep.isRealtime = true;
+          hasUpdatedPresetsLocal = true;
+        }
+      });
+      
+      if (hasUpdatedPresetsLocal) {
+        renderEngravingPresets();
+      }
 
       renderGemDashboard(gems);
       renderEngravingRankDashboard(engravings);
@@ -1187,7 +1239,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ItemGrade: '',
           ItemName: '겁화',
           PageNo: 1,
-          SortCondition: 'ASC'
+          SortCondition: 'DESC' // 가격 내림차순 정렬 (비싼 7~10레벨 보석이 상위에 수집되도록 보장)
         })
       });
 
@@ -1206,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ItemGrade: '',
           ItemName: '작열',
           PageNo: 1,
-          SortCondition: 'ASC'
+          SortCondition: 'DESC' // 가격 내림차순 정렬 (비싼 7~10레벨 보석이 상위에 수집되도록 보장)
         })
       });
 
@@ -1276,7 +1328,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      // 1페이지 수집 (1회 호출)
+      // 1페이지 수집 (1회 호출) - ItemTier 필드 제거하여 모든 유물 각인서 동기화 보장
       const page1Res = await fetch('/api/market', {
         method: 'POST',
         headers: {
@@ -1287,7 +1339,6 @@ document.addEventListener('DOMContentLoaded', () => {
           Sort: 'CURRENT_MIN_PRICE',
           CategoryCode: 40000,
           CharacterClass: '',
-          ItemTier: 4,
           ItemGrade: '유물',
           ItemName: '',
           PageNo: 1,
@@ -1306,7 +1357,6 @@ document.addEventListener('DOMContentLoaded', () => {
           Sort: 'CURRENT_MIN_PRICE',
           CategoryCode: 40000,
           CharacterClass: '',
-          ItemTier: 4,
           ItemGrade: '유물',
           ItemName: '',
           PageNo: 2,
@@ -1420,16 +1470,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 모의 거래소 시세 데이터베이스 (API 연동 실패 혹은 키가 없는 유저의 백업)
   const mockMarketDb = [
-    { Name: '10레벨 겁화의 보석', CurrentMinPrice: 345000, YesterDayAveragePrice: 348000, Grade: '유물' },
-    { Name: '10레벨 작열의 보석', CurrentMinPrice: 162000, YesterDayAveragePrice: 165000, Grade: '유물' },
-    { Name: '9레벨 겁화의 보석', CurrentMinPrice: 115000, YesterDayAveragePrice: 114000, Grade: '유물' },
-    { Name: '9레벨 작열의 보석', CurrentMinPrice: 54000, YesterDayAveragePrice: 54500, Grade: '유물' },
-    { Name: '전설 각인서 선택 가방', CurrentMinPrice: 2400, YesterDayAveragePrice: 2380, Grade: '전설' },
-    { Name: '아비도스 유물', CurrentMinPrice: 65, YesterDayAveragePrice: 66, Grade: '영웅' },
-    { Name: '오레하 유물', CurrentMinPrice: 18, YesterDayAveragePrice: 18, Grade: '희귀' },
-    { Name: '희귀한 유물', CurrentMinPrice: 10, YesterDayAveragePrice: 11, Grade: '일반' },
-    { Name: '원한 전설 각인서', CurrentMinPrice: 3200, YesterDayAveragePrice: 3100, Grade: '전설' },
-    { Name: '아드레날린 전설 각인서', CurrentMinPrice: 2900, YesterDayAveragePrice: 3000, Grade: '전설' }
+    { Name: '10레벨 겁화의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '유물' },
+    { Name: '10레벨 작열의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '유물' },
+    { Name: '9레벨 겁화의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '유물' },
+    { Name: '9레벨 작열의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '유물' },
+    { Name: '전설 각인서 선택 가방', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '전설' },
+    { Name: '아비도스 유물', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '영웅' },
+    { Name: '오레하 유물', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '희귀' },
+    { Name: '희귀한 유물', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '일반' },
+    { Name: '원한 전설 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '전설' },
+    { Name: '아드레날린 전설 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '전설' }
   ];
 
   // 거래소 검색 렌더링 함수
@@ -1456,7 +1506,7 @@ document.addEventListener('DOMContentLoaded', () => {
           Sort: 'CURRENT_MIN_PRICE',
           CategoryCode: 0,
           CharacterClass: '',
-          ItemTier: 4,
+          // 개별 검색 시 유물 각인서(티어 없음)나 3티어 재료 등 다양한 조건도 매칭되도록 ItemTier 4 고정 해제
           ItemGrade: '',
           ItemName: query,
           PageNo: 1,
