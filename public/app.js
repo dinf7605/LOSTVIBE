@@ -1,6 +1,6 @@
 /**
  * LOSTVIBE - 프론트엔드 메인 컨트롤러 (app.js)
- * SPA 라우팅, API Key 설정 및 실시간 캘린더 위젯 구현
+ * SPA 라우팅, API Key 설정, 실시간 캘린더, 아비도스 제작 계산기 및 영지 타이머 연동
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,14 +10,55 @@ document.addEventListener('DOMContentLoaded', () => {
     currentPage: 'home',
     calendarData: null,
     timerIntervalId: null,
-    // 기본 모의 시세 가격 정보 (Step 6 및 Step 9에서 사용 예정)
-    marketPrices: {
-      '아비도스 대검': 45,
-      '아비도스 유물': 60,
-      '오레하 유물': 20,
-      '희귀한 유물': 10,
-      '고대 유물': 0.2,
-      '융화 재료': 280
+
+    // 제작 효율 계산기 상태값
+    craftType: 'normal', // 'normal' (일반) 또는 'superior' (상급)
+    selectedSkill: 'archaeology', // 'archaeology', 'fishing', 'hunting'
+    sellPrice: 280, // 융화재료 30개 기준 시세
+    greatSuccessRate: 5, // 대성공 확률 (%)
+    goldDiscount: 0, // 골드 비용 할인 (%)
+    
+    // 유저 입력 생활 시세 저장 객체 (100개 기준)
+    materialPrices: {
+      archaeology: {
+        abidos: 65,    // 아비도스 유물
+        oreha: 18,     // 오레하 유물
+        rare: 10,      // 희귀한 유물
+        ancient: 0.15  // 고대 유물
+      },
+      fishing: {
+        abidos: 60,    // 아비도스 대검
+        oreha: 16,     // 오레하 낚시 부산물
+        rare: 9,       // 두툼한 생선
+        ancient: 0.12  // 자연산 생선
+      },
+      hunting: {
+        abidos: 58,    // 아비도스 대검
+        oreha: 15,     // 오레하 수렵 부산물
+        rare: 8.5,     // 다듬은 고기
+        ancient: 0.11  // 생고기
+      }
+    },
+
+    // 기본 시세 (리셋용)
+    defaultPrices: {
+      archaeology: { abidos: 65, oreha: 18, rare: 10, ancient: 0.15 },
+      fishing: { abidos: 60, oreha: 16, rare: 9, ancient: 0.12 },
+      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 0.11 }
+    },
+
+    // 레시피 정보 (1회 제작=30개 기준 소모량)
+    recipes: {
+      normal: {
+        baseGold: 300,
+        energy: 288,
+        req: { abidos: 16, oreha: 64, rare: 80, ancient: 80 }
+      },
+      superior: {
+        baseGold: 350,
+        energy: 360,
+        req: { abidos: 24, oreha: 96, rare: 100, ancient: 100 }
+      }
     }
   };
 
@@ -42,17 +83,45 @@ document.addEventListener('DOMContentLoaded', () => {
     bossTimer: document.getElementById('boss-timer'),
     bossStatus: document.getElementById('boss-status'),
     islandTimer: document.getElementById('island-timer'),
-    islandStatus: document.getElementById('island-status')
+    islandStatus: document.getElementById('island-status'),
+
+    // 아비도스 제작 효율 계산기 UI
+    btnCraftNormal: document.getElementById('btn-craft-normal'),
+    btnCraftSuperior: document.getElementById('btn-craft-superior'),
+    inputSellPrice: document.getElementById('input-sell-price'),
+    sliderGreatSuccess: document.getElementById('slider-great-success'),
+    valGreatSuccess: document.getElementById('val-great-success'),
+    sliderGoldDiscount: document.getElementById('slider-gold-discount'),
+    valGoldDiscount: document.getElementById('val-gold-discount'),
+    skillTabs: document.querySelectorAll('.skill-tab'),
+    matInputsContainer: document.getElementById('mat-inputs-container'),
+    btnResetPrices: document.getElementById('btn-reset-prices'),
+
+    // 계산기 결과창
+    profitBadge: document.getElementById('txt-profit-badge'),
+    calcTitle: document.getElementById('txt-calc-title'),
+    netProfit: document.getElementById('txt-net-profit'),
+    detailMatCost: document.getElementById('txt-detail-mat-cost'),
+    detailGoldCost: document.getElementById('txt-detail-gold-cost'),
+    detailTotalCost: document.getElementById('txt-detail-total-cost'),
+    detailRevenue: document.getElementById('txt-detail-revenue'),
+    detailBonus: document.getElementById('txt-detail-bonus'),
+
+    // 영지 타이머 UI
+    inputCurrentEnergy: document.getElementById('input-current-energy'),
+    inputMaxEnergy: document.getElementById('input-max-energy'),
+    inputCraftCount: document.getElementById('input-craft-count'),
+    txtRequiredEnergy: document.getElementById('txt-required-energy'),
+    txtRequiredTime: document.getElementById('txt-required-time'),
+    txtEnergyFillTime: document.getElementById('txt-energy-fill-time')
   };
 
   // === 2. SPA 라우터 및 네비게이션 제어 ===
   
-  // 페이지 뷰 전환 함수
   function switchPage(pageId) {
     if (!pageId) pageId = 'home';
     state.currentPage = pageId;
 
-    // 모든 뷰 비활성화 및 타겟 뷰 활성화
     ui.pageViews.forEach(view => {
       view.classList.remove('active');
     });
@@ -61,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
       targetPage.classList.add('active');
     }
 
-    // 내비게이션 버튼 활성화 클래스 동기화
     ui.navButtons.forEach(btn => {
       if (btn.getAttribute('data-target') === pageId) {
         btn.classList.add('active');
@@ -70,16 +138,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // 해시 값 변경 (무한 루프 방지를 위해 조건부 설정)
     if (window.location.hash !== `#/${pageId}`) {
       window.location.hash = `#/${pageId}`;
     }
 
-    // 페이지별 진입 시 초기화 이벤트 트리거 (필요 시)
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // URL 해시 감지 및 라우팅 바인딩
   function handleRouting() {
     const hash = window.location.hash;
     if (hash.startsWith('#/')) {
@@ -90,10 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 이벤트 리스너: 해시 체인지
   window.addEventListener('hashchange', handleRouting);
 
-  // 이벤트 리스너: 헤더 네비게이션 버튼 클릭
   ui.navButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       const target = btn.getAttribute('data-target');
@@ -101,14 +164,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 이벤트 리스너: 메인 로고 클릭 시 홈 이동
   if (ui.navBrand) {
     ui.navBrand.addEventListener('click', () => {
       switchPage('home');
     });
   }
 
-  // 이벤트 리스너: 홈 화면 5-Card 메뉴 카드 클릭 시 이동
   ui.menuCards.forEach(card => {
     card.addEventListener('click', () => {
       const target = card.getAttribute('data-navigate');
@@ -121,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 3. API Key 설정 및 모달 관리 ===
 
-  // API 경고 배너 및 인풋 상태 업데이트
   function updateApiStatus() {
     if (state.apiKey) {
       ui.apiWarning.style.display = 'none';
@@ -132,12 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 모달 열기
   ui.btnSettings.addEventListener('click', () => {
     ui.modalSettings.classList.add('active');
   });
 
-  // 모달 닫기
   const closeModal = () => {
     ui.modalSettings.classList.remove('active');
   };
@@ -146,7 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === ui.modalSettings) closeModal();
   });
 
-  // API 설정 저장
   ui.btnSaveKey.addEventListener('click', () => {
     const key = ui.inputApiKey.value.trim();
     if (!key) {
@@ -157,18 +214,15 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('lostark-api-key', key);
     updateApiStatus();
     closeModal();
-    // 캘린더 데이터를 다시 조회하도록 갱신
     initCalendarWidget();
   });
 
-  // API 설정 삭제
   ui.btnDeleteKey.addEventListener('click', () => {
     if (confirm('등록된 API Key를 삭제하시겠습니까?')) {
       state.apiKey = '';
       localStorage.removeItem('lostark-api-key');
       updateApiStatus();
       closeModal();
-      // 캘린더 데이터 리셋 및 모의 일정으로 전환
       initCalendarWidget();
     }
   });
@@ -176,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 4. 실시간 캘린더 일정 및 타이머 엔진 ===
 
-  // 실시간 시스템 시계 구동
   function startClock() {
     setInterval(() => {
       const now = new Date();
@@ -184,26 +237,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
   }
 
-  // 모의(Mock) 캘린더 데이터 생성 (API Key가 없거나 호출 실패 시의 예비책)
   function getMockCalendarData() {
     const now = new Date();
     const mockEvents = [];
 
-    // 카오스 게이트: 매시간 정각 (월, 목, 토, 일)
-    const chaosDays = [1, 4, 6, 0]; // 0: 일요일, 1: 월요일...
+    const chaosDays = [1, 4, 6, 0];
     let nextChaos = new Date(now);
     nextChaos.setMinutes(0, 0, 0);
 
-    // 가장 가까운 다음 카게 일정 탐색
     let limit = 0;
     while (!chaosDays.includes(nextChaos.getDay()) || nextChaos <= now) {
       nextChaos.setHours(nextChaos.getHours() + 1);
       limit++;
-      if (limit > 168) break; // 최대 일주일 검사
+      if (limit > 168) break;
     }
     mockEvents.push({ Name: '카오스 게이트', TargetTime: nextChaos });
 
-    // 필드 보스: 매시간 정각 (화, 금, 일)
     const bossDays = [2, 5, 0];
     let nextBoss = new Date(now);
     nextBoss.setMinutes(0, 0, 0);
@@ -216,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     mockEvents.push({ Name: '필드 보스', TargetTime: nextBoss });
 
-    // 모험 섬: 매일 정해진 타임라인 (평일: 11시, 13시, 19시, 21시, 23시 / 주말: 9시 추가)
     let nextIsland = new Date(now);
     const getIslandHours = (day) => {
       return (day === 0 || day === 6) ? [9, 11, 13, 19, 21, 23] : [11, 13, 19, 21, 23];
@@ -225,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let islandHours = getIslandHours(nextIsland.getDay());
     let found = false;
     
-    // 오늘의 일정 중 남은 것 탐색
     for (let h of islandHours) {
       const target = new Date(now);
       target.setHours(h, 0, 0, 0);
@@ -236,7 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 오늘 남은 일정이 없으면 내일 첫 일정으로 설정
     if (!found) {
       nextIsland.setDate(nextIsland.getDate() + 1);
       const nextDayHours = getIslandHours(nextIsland.getDay());
@@ -247,7 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return mockEvents;
   }
 
-  // 실시간 카운트다운 타이머 연산 엔진
   function runCalendarTimer(events) {
     if (state.timerIntervalId) {
       clearInterval(state.timerIntervalId);
@@ -268,22 +313,18 @@ document.addEventListener('DOMContentLoaded', () => {
           const seconds = String(Math.floor((timeDiff % (1000 * 60)) / 1000)).padStart(2, '0');
           displayStr = `${hours}:${minutes}:${seconds}`;
 
-          // 10분 전부터 입장 가능 상태
           if (timeDiff <= 10 * 60 * 1000) {
             statusText = '입장 대기';
             isActive = true;
           }
         } else if (timeDiff <= 0 && timeDiff > -15 * 60 * 1000) {
-          // 일정 시작 후 15분 동안 진행중으로 표시
           displayStr = '00:00:00';
           statusText = '진행중';
           isActive = true;
         } else {
-          // 경과 시 다음 일정으로 데이터 재계산 호출
           initCalendarWidget();
         }
 
-        // 해당 DOM에 적용
         if (evt.Name.includes('카오스')) {
           ui.chaosTimer.textContent = displayStr;
           ui.chaosStatus.textContent = statusText;
@@ -317,10 +358,8 @@ document.addEventListener('DOMContentLoaded', () => {
     state.timerIntervalId = setInterval(updateTimerDisplays, 1000);
   }
 
-  // 캘린더 일정 초기화 및 데이터 로딩
   async function initCalendarWidget() {
     if (!state.apiKey) {
-      // API Key가 없으면 완벽히 동작하는 정적 모의 데이터 바인딩
       const mockEvents = getMockCalendarData();
       runCalendarTimer(mockEvents);
       return;
@@ -341,7 +380,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const now = new Date();
       const parsedEvents = [];
 
-      // API 결과에서 카게, 필보, 모험섬 데이터 분류 및 추출
       const categories = {
         '카오스 게이트': '카오스 게이트',
         '필드 보스': '필드 보스',
@@ -351,7 +389,6 @@ document.addEventListener('DOMContentLoaded', () => {
       for (const catName in categories) {
         const item = data.find(x => x.CategoryName === catName);
         if (item && item.StartTimes) {
-          // 다가오는 미래의 첫 번째 시작 일정 탐색
           const nextTimeStr = item.StartTimes.find(tStr => new Date(tStr) > now);
           if (nextTimeStr) {
             parsedEvents.push({
@@ -362,7 +399,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // 만약 API 응답에서 파싱된 일정이 부족하면 Mock과 병합하여 신뢰성 보장
       const mockData = getMockCalendarData();
       mockData.forEach(mockEvt => {
         if (!parsedEvents.some(p => p.Name === mockEvt.Name)) {
@@ -379,14 +415,229 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  // === 5. 앱 초기 구동 및 이벤트 트리거 ===
+  // === 5. 아비도스 제작 효율 계산기 & 영지 타이머 ===
+
+  // 1) 생활 재료 입력 폼 동적 렌더링
+  function renderMaterialInputs() {
+    const currentPrices = state.materialPrices[state.selectedSkill];
+    ui.matInputsContainer.innerHTML = '';
+
+    const labelMap = {
+      archaeology: {
+        abidos: '아비도스 유물',
+        oreha: '오레하 유물',
+        rare: '희귀한 유물',
+        ancient: '고대 유물'
+      },
+      fishing: {
+        abidos: '아비도스 대검',
+        oreha: '오레하 낚시 부산물',
+        rare: '두툼한 생선',
+        ancient: '자연산 생선'
+      },
+      hunting: {
+        abidos: '아비도스 대검',
+        oreha: '오레하 수렵 부산물',
+        rare: '다듬은 고기',
+        ancient: '생고기'
+      }
+    };
+
+    const keys = ['abidos', 'oreha', 'rare', 'ancient'];
+    const currentLabels = labelMap[state.selectedSkill];
+
+    keys.forEach(key => {
+      const price = currentPrices[key];
+      const label = currentLabels[key];
+
+      const row = document.createElement('div');
+      row.className = 'input-row';
+      row.innerHTML = `
+        <label for="mat-input-${key}">${label} 시세 (100개당)</label>
+        <input type="number" id="mat-input-${key}" data-key="${key}" value="${price}" step="0.01" min="0">
+      `;
+
+      // 실시간 입력값 상태 동기화 및 즉시 재연산
+      const input = row.querySelector('input');
+      input.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value) || 0;
+        state.materialPrices[state.selectedSkill][key] = val;
+        calculateCraftingEfficiency();
+      });
+
+      ui.matInputsContainer.appendChild(row);
+    });
+  }
+
+  // 2) 아비도스 제작 효율 정밀 연산 및 UI 갱신
+  function calculateCraftingEfficiency() {
+    const recipe = state.recipes[state.craftType];
+    const prices = state.materialPrices[state.selectedSkill];
+
+    // 원료비 계산 (100개당 시세 기준 수량 반영)
+    const matCost = (
+      (recipe.req.abidos / 100) * prices.abidos +
+      (recipe.req.oreha / 100) * prices.oreha +
+      (recipe.req.rare / 100) * prices.rare +
+      (recipe.req.ancient / 100) * prices.ancient
+    );
+
+    // 영지 제작 골드 수수료 (할인율 반영)
+    const discountedGoldCost = recipe.baseGold * (1 - state.goldDiscount / 100);
+    const totalCost = matCost + discountedGoldCost;
+
+    // 기대 판매 매출 계산 (거래소 5% 수수료 공제)
+    const baseRevenue = state.sellPrice * 0.95;
+    // 대성공 기대 보너스 수익 (대성공 시 기본 생산물 100% 추가 획득)
+    const bonusRevenue = baseRevenue * (state.greatSuccessRate / 100);
+    const totalRevenue = baseRevenue + bonusRevenue;
+
+    // 기대 순이익
+    const netProfit = totalRevenue - totalCost;
+
+    // UI 출력 갱신
+    ui.detailMatCost.textContent = `${matCost.toFixed(1)} G`;
+    ui.detailGoldCost.textContent = `${discountedGoldCost.toFixed(0)} G`;
+    ui.detailTotalCost.textContent = `${totalCost.toFixed(1)} G`;
+    ui.detailRevenue.textContent = `${baseRevenue.toFixed(1)} G`;
+    ui.detailBonus.textContent = `+${bonusRevenue.toFixed(1)} G`;
+
+    // 메인 순이익 뱃지 갱신
+    const netProfitStr = (netProfit >= 0 ? '+' : '') + netProfit.toFixed(1);
+    ui.netProfit.textContent = netProfitStr;
+
+    const skillLabel = state.selectedSkill === 'archaeology' ? '고고학' : (state.selectedSkill === 'fishing' ? '낚시' : '수렵');
+    const typeLabel = state.craftType === 'normal' ? '일반' : '상급';
+    ui.calcTitle.textContent = `${skillLabel} 기반 ${typeLabel} 아비도스 효율`;
+
+    // 흑자/적자에 따른 비주얼 테마 동적 전환
+    if (netProfit >= 0) {
+      ui.netProfit.className = 'text-green';
+      ui.profitBadge.textContent = '수익 흑자';
+      ui.profitBadge.style.background = 'hsla(145, 90%, 45%, 0.15)';
+      ui.profitBadge.style.color = 'var(--success-green)';
+      ui.profitBadge.style.borderColor = 'var(--success-green-glow)';
+    } else {
+      ui.netProfit.className = 'text-danger';
+      ui.profitBadge.textContent = '수익 적자';
+      ui.profitBadge.style.background = 'hsla(355, 90%, 52%, 0.15)';
+      ui.profitBadge.style.color = 'var(--danger-red)';
+      ui.profitBadge.style.borderColor = 'var(--danger-red-glow)';
+    }
+
+    // 영지 타이머 상태값 연산도 함께 호출
+    calculateStrongholdTimer();
+  }
+
+  // 3) 영지 활동력 및 충전 타이머 연산
+  function calculateStrongholdTimer() {
+    const currentEnergy = parseInt(ui.inputCurrentEnergy.value) || 0;
+    const maxEnergy = parseInt(ui.inputMaxEnergy.value) || 15000;
+    const craftCount = parseInt(ui.inputCraftCount.value) || 1;
+
+    const recipe = state.recipes[state.craftType];
+
+    // 소모 총 활동력
+    const totalRequiredEnergy = recipe.energy * craftCount;
+    ui.txtRequiredEnergy.textContent = totalRequiredEnergy.toLocaleString();
+
+    // 완료 총 소요시간 (1회당 1시간)
+    ui.txtRequiredTime.textContent = `${craftCount}시간 00분`;
+
+    // 활동력 완충 타이머 (10분당 150회복, 즉 분당 15회복)
+    if (currentEnergy >= maxEnergy) {
+      ui.txtEnergyFillTime.textContent = '이미 완전히 충전되었습니다.';
+      ui.txtEnergyFillTime.className = 'value text-green';
+    } else {
+      const neededEnergy = maxEnergy - currentEnergy;
+      const totalMinutes = neededEnergy / 15;
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = Math.round(totalMinutes % 60);
+
+      ui.txtEnergyFillTime.textContent = `${hours}시간 ${minutes}분 남음`;
+      ui.txtEnergyFillTime.className = 'value text-cyan';
+    }
+  }
+
+  // 4) 제작 계산기 이벤트 바인딩
+  function bindCraftingEvents() {
+    // 일반 / 상급 전환 토글
+    ui.btnCraftNormal.addEventListener('click', () => {
+      state.craftType = 'normal';
+      ui.btnCraftNormal.classList.add('active');
+      ui.btnCraftSuperior.classList.remove('active');
+      calculateCraftingEfficiency();
+    });
+
+    ui.btnCraftSuperior.addEventListener('click', () => {
+      state.craftType = 'superior';
+      ui.btnCraftSuperior.classList.add('active');
+      ui.btnCraftNormal.classList.remove('active');
+      calculateCraftingEfficiency();
+    });
+
+    // 판매가 변경
+    ui.inputSellPrice.addEventListener('input', (e) => {
+      state.sellPrice = parseFloat(e.target.value) || 0;
+      calculateCraftingEfficiency();
+    });
+
+    // 대성공 슬라이더
+    ui.sliderGreatSuccess.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value) || 0;
+      state.greatSuccessRate = val;
+      ui.valGreatSuccess.textContent = `${val}%`;
+      calculateCraftingEfficiency();
+    });
+
+    // 제작 수수료 할인 슬라이더
+    ui.sliderGoldDiscount.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value) || 0;
+      state.goldDiscount = val;
+      ui.valGoldDiscount.textContent = `${val}%`;
+      calculateCraftingEfficiency();
+    });
+
+    // 생활 분야 탭 전환
+    ui.skillTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        ui.skillTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        state.selectedSkill = tab.getAttribute('data-skill');
+        renderMaterialInputs();
+        calculateCraftingEfficiency();
+      });
+    });
+
+    // 시세 리셋 버튼
+    ui.btnResetPrices.addEventListener('click', () => {
+      if (confirm('모든 생활 재료 시세를 기본값으로 리셋하시겠습니까?')) {
+        // 깊은 복사로 리셋
+        state.materialPrices = JSON.parse(JSON.stringify(state.defaultPrices));
+        renderMaterialInputs();
+        calculateCraftingEfficiency();
+      }
+    });
+
+    // 영지 타이머 실시간 인풋 감지
+    [ui.inputCurrentEnergy, ui.inputMaxEnergy, ui.inputCraftCount].forEach(input => {
+      input.addEventListener('input', calculateStrongholdTimer);
+    });
+  }
+
+
+  // === 6. 앱 초기 구동 및 이벤트 트리거 ===
   function init() {
     handleRouting();
     updateApiStatus();
     startClock();
     initCalendarWidget();
+
+    // 아비도스 제작 효율 계산기 초기화
+    renderMaterialInputs();
+    bindCraftingEvents();
+    calculateCraftingEfficiency();
     
-    // Lucide 아이콘 초기 렌더링 적용
     if (window.lucide) {
       window.lucide.createIcons();
     }
