@@ -16,14 +16,14 @@
   - [x] `/api/market` (거래소/경매장 검색) 중계 엔드포인트 구현
   - *추천 커밋 메시지:* `Feat: Add Lost Ark API proxy routes with user-key headers`
 
-- [ ] **Step 3: 백엔드 Gemini AI 분석 엔드포인트 구현**
-  - [ ] 서버 사이드 `GEMINI_API_KEY` 환경변수 세팅
-  - [ ] `/api/analyze` 엔드포인트 생성: 프론트로부터 시세 데이터를 받아 Gemini 1.5 Flash에 질의 및 응답 반환 로직 구현
+- [x] **Step 3: 백엔드 Gemini AI 분석 엔드포인트 구현**
+  - [x] 서버 사이드 `GEMINI_API_KEY` 환경변수 세팅
+  - [x] `/api/analyze` 엔드포인트 생성: 프론트로부터 시세 데이터를 받아 Gemini 1.5 Flash에 질의 및 응답 반환 로직 구현
   - *추천 커밋 메시지:* `Feat: Add server-side Gemini AI analysis endpoint`
 
-- [ ] **Step 4: 프론트엔드 퍼블리싱 (HTML 뼈대 및 CSS 디자인 시스템)**
-  - [ ] `public/index.html` 생성: 5-Card 메인 홈, 설정 모달 및 각 유틸리티별 빈 레이아웃 구조화
-  - [ ] `public/index.css` 구축: HSL 기반 다크/네온 테마 토큰, Glassmorphism 카드, 호버 애니메이션 스타일링
+- [x] **Step 4: 프론트엔드 퍼블리싱 (HTML 뼈대 및 CSS 디자인 시스템)**
+  - [x] `public/index.html` 생성: 5-Card 메인 홈, 설정 모달 및 각 유틸리티별 빈 레이아웃 구조화
+  - [x] `public/index.css` 구축: HSL 기반 다크/네온 테마 토큰, Glassmorphism 카드, 호버 애니메이션 스타일링
   - *추천 커밋 메시지:* `Style: Build CSS design system and SPA layout shell`
 
 - [ ] **Step 5: 프론트엔드 SPA 라우터 및 오늘의 일정 캘린더 위젯 구현**
