@@ -1,6 +1,6 @@
 /**
  * LOSTVIBE - 프론트엔드 메인 컨트롤러 (app.js)
- * SPA 라우팅, API Key 설정, 실시간 캘린더, 아비도스 제작 계산기 및 영지 타이머 연동
+ * SPA 라우팅, API Key 설정, 실시간 캘린더, 아비도스 제작 계산기, 영지 타이머, 스펙 효율 진단기 연동
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,33 +11,18 @@ document.addEventListener('DOMContentLoaded', () => {
     calendarData: null,
     timerIntervalId: null,
 
-    // 제작 효율 계산기 상태값
-    craftType: 'normal', // 'normal' (일반) 또는 'superior' (상급)
-    selectedSkill: 'archaeology', // 'archaeology', 'fishing', 'hunting'
-    sellPrice: 280, // 융화재료 30개 기준 시세
-    greatSuccessRate: 5, // 대성공 확률 (%)
-    goldDiscount: 0, // 골드 비용 할인 (%)
+    // 아비도스 제작 효율 계산기 상태값
+    craftType: 'normal',
+    selectedSkill: 'archaeology',
+    sellPrice: 280,
+    greatSuccessRate: 5,
+    goldDiscount: 0,
     
     // 유저 입력 생활 시세 저장 객체 (100개 기준)
     materialPrices: {
-      archaeology: {
-        abidos: 65,    // 아비도스 유물
-        oreha: 18,     // 오레하 유물
-        rare: 10,      // 희귀한 유물
-        ancient: 0.15  // 고대 유물
-      },
-      fishing: {
-        abidos: 60,    // 아비도스 대검
-        oreha: 16,     // 오레하 낚시 부산물
-        rare: 9,       // 두툼한 생선
-        ancient: 0.12  // 자연산 생선
-      },
-      hunting: {
-        abidos: 58,    // 아비도스 대검
-        oreha: 15,     // 오레하 수렵 부산물
-        rare: 8.5,     // 다듬은 고기
-        ancient: 0.11  // 생고기
-      }
+      archaeology: { abidos: 65, oreha: 18, rare: 10, ancient: 0.15 },
+      fishing: { abidos: 60, oreha: 16, rare: 9, ancient: 0.12 },
+      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 0.11 }
     },
 
     // 기본 시세 (리셋용)
@@ -49,16 +34,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 레시피 정보 (1회 제작=30개 기준 소모량)
     recipes: {
-      normal: {
-        baseGold: 300,
-        energy: 288,
-        req: { abidos: 16, oreha: 64, rare: 80, ancient: 80 }
-      },
-      superior: {
-        baseGold: 350,
-        energy: 360,
-        req: { abidos: 24, oreha: 96, rare: 100, ancient: 100 }
-      }
+      normal: { baseGold: 300, energy: 288, req: { abidos: 16, oreha: 64, rare: 80, ancient: 80 } },
+      superior: { baseGold: 350, energy: 360, req: { abidos: 24, oreha: 96, rare: 100, ancient: 100 } }
+    },
+
+    // 스펙 & 진단기 상태값
+    spec: {
+      crit: 1200,
+      swift: 1600,
+      adr: 15,           // 아드레날린 각인 치적 %
+      synergy: 10,       // 시너지 치적 %
+      bracelet: 3,       // 팔찌 치적 %
+      manualCrit: 0,     // 수동 추가 치적 %
+      yearning: 12,      // 갈망 버프 속도 %
+      feast: true,       // 만찬 속도 5% 적용 여부
+      massIncrease: false, // 질증 속도 -10% 적용 여부
+      manualSpeed: 0,    // 수동 추가 공이속 %
+      critDamage: 200,   // 기본 치명타 피해량 %
+      mungaLevel: 2      // 뭉툭한 가시 노드 레벨
     }
   };
 
@@ -113,7 +106,38 @@ document.addEventListener('DOMContentLoaded', () => {
     inputCraftCount: document.getElementById('input-craft-count'),
     txtRequiredEnergy: document.getElementById('txt-required-energy'),
     txtRequiredTime: document.getElementById('txt-required-time'),
-    txtEnergyFillTime: document.getElementById('txt-energy-fill-time')
+    txtEnergyFillTime: document.getElementById('txt-energy-fill-time'),
+
+    // 스펙 & 진단기 입력 UI
+    inputCritStat: document.getElementById('input-crit-stat'),
+    inputSwiftStat: document.getElementById('input-swift-stat'),
+    selectAdrenaline: document.getElementById('select-adrenaline'),
+    selectSynergy: document.getElementById('select-synergy'),
+    selectBraceletCrit: document.getElementById('select-bracelet-crit'),
+    inputManualCrit: document.getElementById('input-manual-crit'),
+    selectYearning: document.getElementById('select-yearning'),
+    chkFeast: document.getElementById('chk-feast'),
+    chkMassIncrease: document.getElementById('chk-mass-increase'),
+    inputManualSpeed: document.getElementById('input-manual-speed'),
+
+    // 스펙 진단 아웃풋 UI
+    badgeMunga: document.getElementById('badge-munga'),
+    txtCalcCrit: document.getElementById('txt-calc-crit'),
+    txtFinalCrit: document.getElementById('txt-final-crit'),
+    inputCritDamage: document.getElementById('input-crit-damage'),
+    selectMungaLevel: document.getElementById('select-munga-level'),
+    txtMungaConvertRate: document.getElementById('txt-munga-convert-rate'),
+    barMungaFill: document.getElementById('bar-munga-fill'),
+    txtMungaEfficiency: document.getElementById('txt-munga-efficiency'),
+    txtMungaDesc: document.getElementById('txt-munga-desc'),
+
+    badgeSonic: document.getElementById('badge-sonic'),
+    txtFinalAtkSpeed: document.getElementById('txt-final-atk-speed'),
+    txtFinalMoveSpeed: document.getElementById('txt-final-move-speed'),
+    txtSonicSum: document.getElementById('txt-sonic-sum'),
+    barSonicFill: document.getElementById('bar-sonic-fill'),
+    txtSonicDamage: document.getElementById('txt-sonic-damage'),
+    txtSonicDesc: document.getElementById('txt-sonic-desc')
   };
 
   // === 2. SPA 라우터 및 네비게이션 제어 ===
@@ -417,30 +441,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 5. 아비도스 제작 효율 계산기 & 영지 타이머 ===
 
-  // 1) 생활 재료 입력 폼 동적 렌더링
   function renderMaterialInputs() {
     const currentPrices = state.materialPrices[state.selectedSkill];
     ui.matInputsContainer.innerHTML = '';
 
     const labelMap = {
-      archaeology: {
-        abidos: '아비도스 유물',
-        oreha: '오레하 유물',
-        rare: '희귀한 유물',
-        ancient: '고대 유물'
-      },
-      fishing: {
-        abidos: '아비도스 대검',
-        oreha: '오레하 낚시 부산물',
-        rare: '두툼한 생선',
-        ancient: '자연산 생선'
-      },
-      hunting: {
-        abidos: '아비도스 대검',
-        oreha: '오레하 수렵 부산물',
-        rare: '다듬은 고기',
-        ancient: '생고기'
-      }
+      archaeology: { abidos: '아비도스 유물', oreha: '오레하 유물', rare: '희귀한 유물', ancient: '고대 유물' },
+      fishing: { abidos: '아비도스 대검', oreha: '오레하 낚시 부산물', rare: '두툼한 생선', ancient: '자연산 생선' },
+      hunting: { abidos: '아비도스 대검', oreha: '오레하 수렵 부산물', rare: '다듬은 고기', ancient: '생고기' }
     };
 
     const keys = ['abidos', 'oreha', 'rare', 'ancient'];
@@ -457,7 +465,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <input type="number" id="mat-input-${key}" data-key="${key}" value="${price}" step="0.01" min="0">
       `;
 
-      // 실시간 입력값 상태 동기화 및 즉시 재연산
       const input = row.querySelector('input');
       input.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value) || 0;
@@ -469,12 +476,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 2) 아비도스 제작 효율 정밀 연산 및 UI 갱신
   function calculateCraftingEfficiency() {
     const recipe = state.recipes[state.craftType];
     const prices = state.materialPrices[state.selectedSkill];
 
-    // 원료비 계산 (100개당 시세 기준 수량 반영)
     const matCost = (
       (recipe.req.abidos / 100) * prices.abidos +
       (recipe.req.oreha / 100) * prices.oreha +
@@ -482,27 +487,20 @@ document.addEventListener('DOMContentLoaded', () => {
       (recipe.req.ancient / 100) * prices.ancient
     );
 
-    // 영지 제작 골드 수수료 (할인율 반영)
     const discountedGoldCost = recipe.baseGold * (1 - state.goldDiscount / 100);
     const totalCost = matCost + discountedGoldCost;
 
-    // 기대 판매 매출 계산 (거래소 5% 수수료 공제)
     const baseRevenue = state.sellPrice * 0.95;
-    // 대성공 기대 보너스 수익 (대성공 시 기본 생산물 100% 추가 획득)
     const bonusRevenue = baseRevenue * (state.greatSuccessRate / 100);
     const totalRevenue = baseRevenue + bonusRevenue;
-
-    // 기대 순이익
     const netProfit = totalRevenue - totalCost;
 
-    // UI 출력 갱신
     ui.detailMatCost.textContent = `${matCost.toFixed(1)} G`;
     ui.detailGoldCost.textContent = `${discountedGoldCost.toFixed(0)} G`;
     ui.detailTotalCost.textContent = `${totalCost.toFixed(1)} G`;
     ui.detailRevenue.textContent = `${baseRevenue.toFixed(1)} G`;
     ui.detailBonus.textContent = `+${bonusRevenue.toFixed(1)} G`;
 
-    // 메인 순이익 뱃지 갱신
     const netProfitStr = (netProfit >= 0 ? '+' : '') + netProfit.toFixed(1);
     ui.netProfit.textContent = netProfitStr;
 
@@ -510,7 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const typeLabel = state.craftType === 'normal' ? '일반' : '상급';
     ui.calcTitle.textContent = `${skillLabel} 기반 ${typeLabel} 아비도스 효율`;
 
-    // 흑자/적자에 따른 비주얼 테마 동적 전환
     if (netProfit >= 0) {
       ui.netProfit.className = 'text-green';
       ui.profitBadge.textContent = '수익 흑자';
@@ -525,11 +522,9 @@ document.addEventListener('DOMContentLoaded', () => {
       ui.profitBadge.style.borderColor = 'var(--danger-red-glow)';
     }
 
-    // 영지 타이머 상태값 연산도 함께 호출
     calculateStrongholdTimer();
   }
 
-  // 3) 영지 활동력 및 충전 타이머 연산
   function calculateStrongholdTimer() {
     const currentEnergy = parseInt(ui.inputCurrentEnergy.value) || 0;
     const maxEnergy = parseInt(ui.inputMaxEnergy.value) || 15000;
@@ -537,14 +532,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const recipe = state.recipes[state.craftType];
 
-    // 소모 총 활동력
     const totalRequiredEnergy = recipe.energy * craftCount;
     ui.txtRequiredEnergy.textContent = totalRequiredEnergy.toLocaleString();
 
-    // 완료 총 소요시간 (1회당 1시간)
     ui.txtRequiredTime.textContent = `${craftCount}시간 00분`;
 
-    // 활동력 완충 타이머 (10분당 150회복, 즉 분당 15회복)
     if (currentEnergy >= maxEnergy) {
       ui.txtEnergyFillTime.textContent = '이미 완전히 충전되었습니다.';
       ui.txtEnergyFillTime.className = 'value text-green';
@@ -559,9 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 4) 제작 계산기 이벤트 바인딩
   function bindCraftingEvents() {
-    // 일반 / 상급 전환 토글
     ui.btnCraftNormal.addEventListener('click', () => {
       state.craftType = 'normal';
       ui.btnCraftNormal.classList.add('active');
@@ -576,13 +566,11 @@ document.addEventListener('DOMContentLoaded', () => {
       calculateCraftingEfficiency();
     });
 
-    // 판매가 변경
     ui.inputSellPrice.addEventListener('input', (e) => {
       state.sellPrice = parseFloat(e.target.value) || 0;
       calculateCraftingEfficiency();
     });
 
-    // 대성공 슬라이더
     ui.sliderGreatSuccess.addEventListener('input', (e) => {
       const val = parseInt(e.target.value) || 0;
       state.greatSuccessRate = val;
@@ -590,7 +578,6 @@ document.addEventListener('DOMContentLoaded', () => {
       calculateCraftingEfficiency();
     });
 
-    // 제작 수수료 할인 슬라이더
     ui.sliderGoldDiscount.addEventListener('input', (e) => {
       const val = parseInt(e.target.value) || 0;
       state.goldDiscount = val;
@@ -598,7 +585,6 @@ document.addEventListener('DOMContentLoaded', () => {
       calculateCraftingEfficiency();
     });
 
-    // 생활 분야 탭 전환
     ui.skillTabs.forEach(tab => {
       tab.addEventListener('click', () => {
         ui.skillTabs.forEach(t => t.classList.remove('active'));
@@ -609,24 +595,207 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // 시세 리셋 버튼
     ui.btnResetPrices.addEventListener('click', () => {
       if (confirm('모든 생활 재료 시세를 기본값으로 리셋하시겠습니까?')) {
-        // 깊은 복사로 리셋
         state.materialPrices = JSON.parse(JSON.stringify(state.defaultPrices));
         renderMaterialInputs();
         calculateCraftingEfficiency();
       }
     });
 
-    // 영지 타이머 실시간 인풋 감지
     [ui.inputCurrentEnergy, ui.inputMaxEnergy, ui.inputCraftCount].forEach(input => {
       input.addEventListener('input', calculateStrongholdTimer);
     });
   }
 
 
-  // === 6. 앱 초기 구동 및 이벤트 트리거 ===
+  // === 6. 캐릭터 스펙 & 특성 효율 진단 엔진 ===
+
+  function calculateSpecDiagnosis() {
+    const spec = state.spec;
+
+    // 1) 치명타 적중률 (치적) 정밀 계산
+    // 치명 스탯 환산 (시즌 3 공식: 1 치명 ≈ 0.0357%)
+    const critFromStat = spec.crit * 0.0357;
+    // 종합 치적 합산
+    const calcCrit = critFromStat + spec.adr + spec.synergy + spec.bracelet + spec.manualCrit;
+    ui.txtCalcCrit.textContent = `${calcCrit.toFixed(2)}%`;
+
+    // 뭉가 미채용 시/채용 시 최종 치적 (뭉가는 실질 치적을 100%로 캡핑)
+    const finalCrit = Math.min(100, calcCrit);
+    ui.txtFinalCrit.textContent = `${finalCrit.toFixed(2)}%`;
+
+
+    // 2) 뭉툭한 가시 (Blunt Thorn) 진단
+    const excessCrit = Math.max(0, calcCrit - 100); // 100%를 초과한 치적
+    let mungaConvertRate = 0;
+    let maxMungaLimit = 75.0; // 2레벨 기준 상한
+
+    if (spec.mungaLevel === 1) {
+      mungaConvertRate = excessCrit * 1.25;
+      maxMungaLimit = 52.5;
+    } else {
+      mungaConvertRate = excessCrit * 1.5;
+      maxMungaLimit = 75.0;
+    }
+
+    // 상한 캡 적용
+    const finalMungaDamage = Math.min(maxMungaLimit, mungaConvertRate);
+
+    // 게이지 바 충전율 반영
+    const mungaFillPercent = Math.min(100, (finalMungaDamage / maxMungaLimit) * 100);
+    ui.barMungaFill.style.width = `${mungaFillPercent}%`;
+    ui.txtMungaConvertRate.textContent = `${finalMungaDamage.toFixed(2)}% / ${maxMungaLimit.toFixed(1)}%`;
+
+    // 일반 딜 기댓값 비교 공식 연산
+    // E_normal = 1 + C_normal * (치피 - 1)
+    const critDmgMultiplier = (spec.critDamage / 100) - 1;
+    const E_normal = 1 + (finalCrit / 100) * critDmgMultiplier;
+    // E_munga = E_normal * (1 + 진피증/100)
+    const E_munga = E_normal * (1 + finalMungaDamage / 100);
+    const mungaEfficiency = (E_munga / E_normal - 1) * 100;
+
+    ui.txtMungaEfficiency.textContent = `+${mungaEfficiency.toFixed(2)}%`;
+
+    // 뭉툭한 가시 진단 피드백 갱신
+    if (calcCrit <= 100) {
+      ui.badgeMunga.textContent = '비효율';
+      ui.badgeMunga.className = 'badge border-danger text-danger';
+      ui.badgeMunga.style.background = 'hsla(355, 90%, 52%, 0.1)';
+      ui.txtMungaDesc.innerHTML = `현재 종합 치적이 <strong class="text-orange">${calcCrit.toFixed(1)}%</strong>로 100% 이하입니다. 뭉툭한 가시의 초과 치적 변환 진피증이 전혀 작동하지 않고 있습니다. <strong class="text-gold">치명 스탯을 늘리거나 파티 치적 시너지</strong>를 구성하여 100%를 무조건 초과하도록 구성하는 것을 강력히 권장합니다.`;
+    } else {
+      ui.badgeMunga.textContent = '최적 작동';
+      ui.badgeMunga.className = 'badge border-gold text-gold';
+      ui.badgeMunga.style.background = 'hsla(45, 100%, 55%, 0.1)';
+      
+      if (finalMungaDamage >= maxMungaLimit) {
+        ui.txtMungaDesc.innerHTML = `초과 치적이 <strong class="text-cyan">${excessCrit.toFixed(1)}%</strong>에 달하여 뭉툭한 가시 <strong class="text-purple">최대 진피증 상한량(${maxMungaLimit}%)에 도달</strong>했습니다! 완벽을 초과한 극강의 스펙 세팅 상태입니다. 추가적인 치적 세팅은 낭비이므로 스탯을 타 스탯으로 전환하시는 것을 추천합니다.`;
+      } else {
+        ui.txtMungaDesc.innerHTML = `현재 초과 치적 <strong class="text-cyan">${excessCrit.toFixed(1)}%</strong>가 성공적으로 <strong class="text-green">진화 피해 증가 +${finalMungaDamage.toFixed(2)}%</strong>로 변환되고 있습니다. 매우 유기적으로 효율이 누수 없이 빌드되고 있는 건강한 진화 세팅 상태입니다.`;
+      }
+    }
+
+
+    // 3) 음속 돌파 (Sonic Breakthrough) 진단
+    // 신속 스탯 환산 (시즌 3 공식: 1 신속 ≈ 0.01717%)
+    const speedFromSwift = spec.swift * 0.01717;
+
+    // 만찬, 갈망, 질증 디버프 여부 종합
+    const feastBuff = spec.feast ? 5.0 : 0.0;
+    const massPenalty = spec.massIncrease ? -10.0 : 0.0;
+
+    // 최종 공속 및 이속 합산 (기본 속도 100% 시작)
+    const finalAtkSpeed = 100 + speedFromSwift + spec.yearning + feastBuff + massPenalty + spec.manualSpeed;
+    const finalMoveSpeed = 100 + speedFromSwift + spec.yearning + feastBuff + spec.manualSpeed;
+
+    // 화면 표시
+    ui.txtFinalAtkSpeed.textContent = `${finalAtkSpeed.toFixed(2)}%`;
+    ui.txtFinalMoveSpeed.textContent = `${finalMoveSpeed.toFixed(2)}%`;
+
+    // 140% 상한 초과분 계산
+    const excessAtk = Math.max(0, finalAtkSpeed - 140);
+    const excessMove = Math.max(0, finalMoveSpeed - 140);
+    const excessSum = excessAtk + excessMove;
+
+    // 음속 돌파 진피증 획득량 = 초과분 합산 * 0.3
+    const sonicDamage = excessSum * 0.3;
+    ui.txtSonicDamage.textContent = `+${sonicDamage.toFixed(2)}%`;
+
+    // 게이지바 타겟은 풀 효율 기준 속도 합산 (상한인 140% 기준 풀초과 306.67% 목표)
+    const actualSum = finalAtkSpeed + finalMoveSpeed;
+    const maxTargetSum = 306.67;
+    ui.txtSonicSum.textContent = `${actualSum.toFixed(1)}% / ${maxTargetSum.toFixed(1)}%`;
+    const sonicFillPercent = Math.min(100, (actualSum / maxTargetSum) * 100);
+    ui.barSonicFill.style.width = `${sonicFillPercent}%`;
+
+    // 음속 돌파 피드백 업데이트
+    if (sonicDamage <= 0) {
+      ui.badgeSonic.textContent = '비활성';
+      ui.badgeSonic.className = 'badge border-muted text-muted';
+      ui.badgeSonic.style.background = 'hsla(0, 0%, 50%, 0.1)';
+      ui.txtSonicDesc.innerHTML = `공격 속도와 이동 속도가 둘 다 <strong class="text-orange">140% 기본 상한에 미치지 못하여</strong> 음속 돌파를 통한 보너스 딜증이 발생하지 않는 초비상 상태입니다. <strong class="text-cyan">신속 특성을 더 늘리거나 파티 갈망 버프, 속도 자버프 스킬</strong>을 확보하여 반드시 140% 이상으로 속도를 끌어올려 초과 효율을 유도하십시오.`;
+    } else {
+      ui.badgeSonic.textContent = '효율 활성화';
+      ui.badgeSonic.className = 'badge border-cyan text-cyan';
+      ui.badgeSonic.style.background = 'hsla(180, 100%, 50%, 0.1)';
+
+      if (actualSum >= maxTargetSum) {
+        ui.txtSonicDesc.innerHTML = `최종 합산 속도가 <strong class="text-green">${actualSum.toFixed(1)}%</strong>에 달하여 음속 돌파로 획득 가능한 <strong class="text-purple">최대 진화 피해 증가량 한계치</strong>에 돌파 완료했습니다! 극신속 딜러 특유의 시원시원하고 압도적인 화력을 극한까지 뿜어내고 있는 명품 세팅입니다.`;
+      } else {
+        ui.txtSonicDesc.innerHTML = `140% 상 상한 초과분 속도가 유기적으로 환산되어 <strong class="text-cyan">진화 피해 증가 +${sonicDamage.toFixed(2)}%</strong>를 안전하게 확보하고 있습니다. 신속 딜러로서 매우 훌륭한 속도 최적화 수준입니다.`;
+      }
+    }
+  }
+
+  // 캐릭터 스펙 관련 실시간 이벤트 바인딩
+  function bindSpecEvents() {
+    // 특성 스탯 인풋 이벤트
+    ui.inputCritStat.addEventListener('input', (e) => {
+      state.spec.crit = parseInt(e.target.value) || 0;
+      calculateSpecDiagnosis();
+    });
+
+    ui.inputSwiftStat.addEventListener('input', (e) => {
+      state.spec.swift = parseInt(e.target.value) || 0;
+      calculateSpecDiagnosis();
+    });
+
+    // 치적 보조 설정 이벤트
+    ui.selectAdrenaline.addEventListener('change', (e) => {
+      state.spec.adr = parseFloat(e.target.value) || 0;
+      calculateSpecDiagnosis();
+    });
+
+    ui.selectSynergy.addEventListener('change', (e) => {
+      state.spec.synergy = parseFloat(e.target.value) || 0;
+      calculateSpecDiagnosis();
+    });
+
+    ui.selectBraceletCrit.addEventListener('change', (e) => {
+      state.spec.bracelet = parseFloat(e.target.value) || 0;
+      calculateSpecDiagnosis();
+    });
+
+    ui.inputManualCrit.addEventListener('input', (e) => {
+      state.spec.manualCrit = parseFloat(e.target.value) || 0;
+      calculateSpecDiagnosis();
+    });
+
+    // 공이속 보조 설정 이벤트
+    ui.selectYearning.addEventListener('change', (e) => {
+      state.spec.yearning = parseFloat(e.target.value) || 0;
+      calculateSpecDiagnosis();
+    });
+
+    ui.chkFeast.addEventListener('change', (e) => {
+      state.spec.feast = e.target.checked;
+      calculateSpecDiagnosis();
+    });
+
+    ui.chkMassIncrease.addEventListener('change', (e) => {
+      state.spec.massIncrease = e.target.checked;
+      calculateSpecDiagnosis();
+    });
+
+    ui.inputManualSpeed.addEventListener('input', (e) => {
+      state.spec.manualSpeed = parseFloat(e.target.value) || 0;
+      calculateSpecDiagnosis();
+    });
+
+    // 뭉가 상세 연산 설정 이벤트
+    ui.inputCritDamage.addEventListener('input', (e) => {
+      state.spec.critDamage = parseFloat(e.target.value) || 200;
+      calculateSpecDiagnosis();
+    });
+
+    ui.selectMungaLevel.addEventListener('change', (e) => {
+      state.spec.mungaLevel = parseInt(e.target.value) || 2;
+      calculateSpecDiagnosis();
+    });
+  }
+
+
+  // === 7. 앱 초기 구동 및 이벤트 트리거 ===
   function init() {
     handleRouting();
     updateApiStatus();
@@ -637,6 +806,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMaterialInputs();
     bindCraftingEvents();
     calculateCraftingEfficiency();
+
+    // 캐릭터 스펙 진단기 초기화
+    bindSpecEvents();
+    calculateSpecDiagnosis();
     
     if (window.lucide) {
       window.lucide.createIcons();
