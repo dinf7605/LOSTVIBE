@@ -1,6 +1,6 @@
 /**
  * LOSTVIBE - 프론트엔드 메인 컨트롤러 (app.js)
- * SPA 라우팅, API Key 설정, 실시간 캘린더, 아비도스 제작 계산기, 영지 타이머, 스펙 효율 진단기, 낙원 지옥 보상 비교, 경매 분배금 연산 통합
+ * SPA 라우팅, API Key 설정, 실시간 캘린더, 아비도스 제작 계산기, 영지 타이머, 스펙 효율 진단기, 낙원 지옥 보상 비교, 경매 분배금 연산, 시세 검색, Gemini AI 애널리스트 피드 통합
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -55,19 +55,16 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     // 낙원 지옥 보상 단계
-    hellLevel: '1640', // '1640', '1700', '1730'
+    hellLevel: '1640',
     
     // 낙원 아이템 가격 참조 데이터 (실시간 시세 연동 및 환산용)
     hellPrices: {
-      // 복원석
       restorationLow: 1200,
       restorationMid: 2500,
       restorationHigh: 5500,
-      // 공명석
       resonanceLow: 400,
       resonanceMid: 800,
       resonanceHigh: 1800,
-      // 4티어 보석
       gemLvl4: 3500,
       gemLvl5: 10500,
       gemLvl6: 31500
@@ -76,8 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 경매 분배금 계산기 상태값
     auction: {
       marketPrice: 10000,
-      raidSize: 4 // 4인, 8인, 16인
-    }
+      raidSize: 4
+    },
+
+    // AI 분석 타자기 상태
+    isAiTyping: false
   };
 
   // UI 요소 참조
@@ -177,7 +177,15 @@ document.addEventListener('DOMContentLoaded', () => {
     txtBidRecommend: document.getElementById('txt-bid-recommend'),
     txtAuctionBaseVal: document.getElementById('txt-auction-base-val'),
     txtAuctionTaxVal: document.getElementById('txt-auction-tax-val'),
-    txtAuctionDividend: document.getElementById('txt-auction-dividend')
+    txtAuctionDividend: document.getElementById('txt-auction-dividend'),
+
+    // 시세 검색 & AI 분석 UI
+    inputMarketSearch: document.getElementById('input-market-search'),
+    btnMarketSearch: document.getElementById('btn-market-search'),
+    presetTags: document.querySelectorAll('.preset-tag'),
+    marketSearchResults: document.getElementById('market-search-results'),
+    btnAiAnalyze: document.getElementById('btn-ai-analyze'),
+    aiTerminalOutput: document.getElementById('ai-terminal-output')
   };
 
   // === 2. SPA 라우터 및 네비게이션 제어 ===
@@ -809,17 +817,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 7. 낙원 지옥 보상 효율 계산기 ===
 
-  // 낙원 지옥 단계별 보상 가치 비교 연산
   function calculateHellRewards() {
     const prices = state.hellPrices;
     const level = state.hellLevel;
     let rewards = [];
 
     if (level === '1640') {
-      // 1단계
       const valA = (prices.restorationLow * 5) + (prices.resonanceLow * 15);
       const valB = prices.gemLvl4;
-      const valC = 15000; // 귀속 골드
+      const valC = 15000;
 
       rewards = [
         { name: '재련 보조재 패키지 (하급)', desc: `하급 복원석 5개 + 하급 공명석 15개`, gold: valA, icon: 'gem', type: 'material' },
@@ -827,7 +833,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: '순수 귀속 골드', desc: `즉시 획득 가능한 귀속 골드`, gold: valC, icon: 'coins', type: 'gold' }
       ];
     } else if (level === '1700') {
-      // 2단계
       const valA = (prices.restorationMid * 5) + (prices.resonanceMid * 15);
       const valB = prices.gemLvl5;
       const valC = 25000;
@@ -838,7 +843,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: '순수 귀속 골드', desc: `즉시 획득 가능한 귀속 골드`, gold: valC, icon: 'coins', type: 'gold' }
       ];
     } else {
-      // 3단계 (1730)
       const valA = (prices.restorationHigh * 5) + (prices.resonanceHigh * 15);
       const valB = prices.gemLvl6;
       const valC = 40000;
@@ -850,10 +854,8 @@ document.addEventListener('DOMContentLoaded', () => {
       ];
     }
 
-    // 골드 가치 내림차순 정렬
     rewards.sort((a, b) => b.gold - a.gold);
 
-    // 카드 목록 렌더링
     ui.hellRewardsContainer.innerHTML = '';
     rewards.forEach((reward, index) => {
       const rankClass = index === 0 ? 'border-gold' : (index === 1 ? 'border-cyan' : '');
@@ -878,13 +880,11 @@ document.addEventListener('DOMContentLoaded', () => {
       ui.hellRewardsContainer.appendChild(card);
     });
 
-    // 베스트 초이스 요약카드 업데이트
     const best = rewards[0];
     ui.txtBestRewardName.textContent = best.name;
     ui.txtBestRewardGold.textContent = best.gold.toLocaleString();
   }
 
-  // 낙원 지옥 이벤트 바인딩
   function bindHellEvents() {
     ui.hellLevelButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -899,40 +899,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 8. 레이드 경매 분배금 계산기 ===
 
-  // 경매 분배금 실시간 연산 및 UI 갱신
   function calculateAuctionDividends() {
     const marketPrice = state.auction.marketPrice;
     const N = state.auction.raidSize;
 
-    // 아이템 원본 가치
     ui.txtAuctionBaseVal.textContent = `${marketPrice.toLocaleString()} G`;
 
-    // 5% 판매 수수료 제외한 거래소 실질 가치
     const taxVal = marketPrice * 0.95;
     ui.txtAuctionTaxVal.textContent = `${taxVal.toLocaleString()} G`;
 
-    // 손익분기점 적정 입찰가 (B_breakeven = 거래소 실질가치 * (N-1) / N)
     const breakEven = taxVal * ((N - 1) / N);
     ui.txtBidBreakEven.textContent = Math.round(breakEven).toLocaleString();
 
-    // 추천 이득 선점 입찰가 (수수료 제외 확실한 10%의 순수익 마진 확보: B_recommend = B_breakeven * 0.91)
     const recommend = breakEven * 0.91;
     ui.txtBidRecommend.textContent = Math.round(recommend).toLocaleString();
 
-    // 인당 예상 분배금 (적정가 낙찰 기준)
-    const dividend = breakEven * 0.95 / N; // 실제 인당 돌아가는 순수 배당금
+    const dividend = breakEven * 0.95 / N;
     ui.txtAuctionDividend.textContent = `${Math.round(dividend).toLocaleString()} G`;
   }
 
-  // 경매 분배금 이벤트 바인딩
   function bindAuctionEvents() {
-    // 아이템 시세 입력 감지
     ui.inputAuctionPrice.addEventListener('input', (e) => {
       state.auction.marketPrice = parseFloat(e.target.value) || 0;
       calculateAuctionDividends();
     });
 
-    // 레이드 인원 버튼 전환 토글
     ui.raidSizeButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         ui.raidSizeButtons.forEach(b => b.classList.remove('active'));
@@ -944,7 +935,257 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  // === 9. 앱 초기 구동 및 이벤트 트리거 ===
+  // === 9. 실시간 시세 검색 및 Gemini AI 리포트 인터랙션 ===
+
+  // 모의 거래소 시세 데이터베이스 (API 연동 실패 혹은 키가 없는 유저의 백업)
+  const mockMarketDb = [
+    { Name: '10레벨 겁화의 보석', CurrentMinPrice: 345000, YesterDayAveragePrice: 348000, Grade: '유물' },
+    { Name: '10레벨 작열의 보석', CurrentMinPrice: 162000, YesterDayAveragePrice: 165000, Grade: '유물' },
+    { Name: '9레벨 겁화의 보석', CurrentMinPrice: 115000, YesterDayAveragePrice: 114000, Grade: '유물' },
+    { Name: '9레벨 작열의 보석', CurrentMinPrice: 54000, YesterDayAveragePrice: 54500, Grade: '유물' },
+    { Name: '전설 각인서 선택 가방', CurrentMinPrice: 2400, YesterDayAveragePrice: 2380, Grade: '전설' },
+    { Name: '아비도스 유물', CurrentMinPrice: 65, YesterDayAveragePrice: 66, Grade: '영웅' },
+    { Name: '오레하 유물', CurrentMinPrice: 18, YesterDayAveragePrice: 18, Grade: '희귀' },
+    { Name: '희귀한 유물', CurrentMinPrice: 10, YesterDayAveragePrice: 11, Grade: '일반' },
+    { Name: '원한 전설 각인서', CurrentMinPrice: 3200, YesterDayAveragePrice: 3100, Grade: '전설' },
+    { Name: '아드레날린 전설 각인서', CurrentMinPrice: 2900, YesterDayAveragePrice: 3000, Grade: '전설' }
+  ];
+
+  // 거래소 검색 렌더링 함수
+  async function searchMarketItems(query) {
+    ui.marketSearchResults.innerHTML = '<div class="loading-bar" style="text-align:center; padding:20px; color:var(--accent-cyan); font-weight:700;">거래소 데이터를 동기화 중...</div>';
+
+    if (!state.apiKey) {
+      // 로컬 모의 시세 검색 작동
+      setTimeout(() => {
+        const filtered = mockMarketDb.filter(x => x.Name.toLowerCase().includes(query.toLowerCase()));
+        renderMarketResults(filtered);
+      }, 500);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/market', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-lostark-api-key': state.apiKey
+        },
+        body: JSON.stringify({
+          Sort: 'CURRENT_MIN_PRICE',
+          CategoryCode: 0,
+          CharacterClass: '',
+          ItemTier: 4,
+          ItemGrade: '',
+          ItemName: query,
+          PageNo: 1,
+          SortCondition: 'ASC'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('API Key가 만료되었거나 검색 오류 발생.');
+      }
+
+      const data = await response.json();
+      const items = data.Items || [];
+      renderMarketResults(items);
+    } catch (err) {
+      console.warn('API 검색 오류로 인해 모의 데이터 백업 구동:', err.message);
+      const filtered = mockMarketDb.filter(x => x.Name.toLowerCase().includes(query.toLowerCase()));
+      renderMarketResults(filtered);
+    }
+  }
+
+  // 검색 결과 목록 UI 바인딩
+  function renderMarketResults(items) {
+    ui.marketSearchResults.innerHTML = '';
+
+    if (items.length === 0) {
+      ui.marketSearchResults.innerHTML = '<div class="no-results">검색어와 부합하는 시즌 3 핵심 거래소 아이템이 없습니다.</div>';
+      return;
+    }
+
+    items.forEach(item => {
+      const priceDiff = item.CurrentMinPrice - item.YesterDayAveragePrice;
+      const diffClass = priceDiff > 0 ? 'text-cyan' : (priceDiff < 0 ? 'text-danger' : 'text-dim');
+      const diffArrow = priceDiff > 0 ? '▲' : (priceDiff < 0 ? '▼' : '-');
+
+      const card = document.createElement('div');
+      card.className = 'market-item-card';
+      card.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:hsla(224, 25%, 5%, 0.3); border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:16px; margin-bottom:12px;';
+      card.innerHTML = `
+        <div>
+          <h4 style="font-size:14px; font-weight:700; color:var(--text-white);">${item.Name}</h4>
+          <span style="font-size:11px; color:var(--text-muted);">전일 평균가: ${item.YesterDayAveragePrice.toLocaleString()} G</span>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:\'Outfit\', sans-serif; font-size:16px; font-weight:800; color:var(--text-white);">${item.CurrentMinPrice.toLocaleString()}<span style="font-size:11px; color:var(--accent-gold); font-weight:700; margin-left:3px;">G</span></div>
+          <span class="${diffClass}" style="font-size:11px; font-weight:700;">${diffArrow} ${Math.abs(priceDiff).toLocaleString()} G</span>
+        </div>
+      `;
+      ui.marketSearchResults.appendChild(card);
+    });
+  }
+
+  // 경량 마크다운 렌더러 함수 (AI 응답 텍스트를 터미널 테마 HTML로 다듬어줌)
+  function renderMarkdownToHtml(text) {
+    let html = text;
+    // 볼드 처리
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--accent-cyan);">$1</strong>');
+    // 리스트 처리
+    html = html.replace(/^\s*-\s+(.*)$/gm, '<li style="margin-left:15px; margin-bottom:6px; list-style-type:square;">$1</li>');
+    // 제목 헤더 (###)
+    html = html.replace(/^\s*###\s+(.*)$/gm, '<h3 style="font-size:16px; font-weight:800; color:var(--accent-gold); margin-top:20px; margin-bottom:10px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">$1</h3>');
+    // 일반 줄바꿈 대응
+    html = html.replace(/\n/g, '<br>');
+    return html;
+  }
+
+  // AI 터미널 타자기 출력 시뮬레이터
+  function typeWriterTerminal(targetEl, fullText) {
+    state.isAiTyping = true;
+    ui.btnAiAnalyze.disabled = true;
+    ui.btnAiAnalyze.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> 분석 리포트 수신 중...';
+
+    if (window.lucide) window.lucide.createIcons();
+
+    // 터미널 초기화 및 스트리밍 시각효과 프롬프트 주입
+    targetEl.innerHTML = `
+      <p class="terminal-meta">&gt; CONNECTION ESTABLISHED WITH GEMINI AI SERVER.</p>
+      <p class="terminal-meta">&gt; SECURE ENCRYPTED NODE HANDSHAKE COMPLETED.</p>
+      <p class="terminal-meta">&gt; RECEIVING ROBUST REPORT PACKETS...</p>
+      <br>
+      <div id="typing-content-box"></div>
+      <div class="terminal-prompt-line">
+        <span class="prompt-arrow">&gt;</span>
+        <span class="terminal-cursor">_</span>
+      </div>
+    `;
+
+    const contentBox = document.getElementById('typing-content-box');
+    let idx = 0;
+    const speed = 15; // 타자기 출력 간격 속도 (ms)
+
+    function type() {
+      if (idx < fullText.length) {
+        // 단어/문자 파싱 및 점진적 HTML 렌더링
+        const subStr = fullText.substring(0, idx + 1);
+        contentBox.innerHTML = renderMarkdownToHtml(subStr);
+        idx++;
+        targetEl.scrollTop = targetEl.scrollHeight; // 자동 스크롤 하단 고정
+        setTimeout(type, speed);
+      } else {
+        // 타이핑 완료
+        state.isAiTyping = false;
+        ui.btnAiAnalyze.disabled = false;
+        ui.btnAiAnalyze.innerHTML = '<i data-lucide="cpu"></i> AI 시세 분석 시작';
+        if (window.lucide) window.lucide.createIcons();
+      }
+    }
+
+    type();
+  }
+
+  // Gemini AI 마켓 분석 발동 함수
+  async function triggerGeminiAnalysis() {
+    if (state.isAiTyping) return;
+
+    ui.aiTerminalOutput.innerHTML = `
+      <p class="terminal-meta">&gt; SYSTEM: AI 로스트아크 경제학자 페르소나 초기화 완료.</p>
+      <p class="terminal-meta">&gt; 분석에 필요한 경제 데이터 마샬링 중...</p>
+      <div class="loading-bar" style="color:var(--accent-cyan); font-weight:700; margin-top:10px;">[■■■■■■■■■■■■■■■■■■■■] 100% READY. SERVER REQUEST DISPATCHED...</div>
+    `;
+
+    // 현재 계산 완료된 캐릭터 전투 스탯 기댓값 변수 매핑
+    const critFromStat = state.spec.crit * 0.0357;
+    const calculatedCrit = critFromStat + state.spec.adr + state.spec.synergy + state.spec.bracelet + state.spec.manualCrit;
+    
+    const speedFromSwift = state.spec.swift * 0.01717;
+    const finalAtk = 100 + speedFromSwift + state.spec.yearning + (state.spec.feast ? 5 : 0) + (state.spec.massIncrease ? -10 : 0) + state.spec.manualSpeed;
+    const finalMove = 100 + speedFromSwift + state.spec.yearning + (state.spec.feast ? 5 : 0) + state.spec.manualSpeed;
+
+    const payload = {
+      marketData: {
+        selectedSkill: state.selectedSkill,
+        craftType: state.craftType,
+        sellPrice: state.sellPrice,
+        materialPrices: state.materialPrices[state.selectedSkill]
+      },
+      specData: {
+        crit: state.spec.crit,
+        swift: state.spec.swift,
+        calculatedCrit: calculatedCrit,
+        calculatedAtkSpeed: finalAtk,
+        calculatedMoveSpeed: finalMove,
+        mungaLevel: state.spec.mungaLevel
+      }
+    };
+
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('서버 또는 API 연동에 실패했습니다.');
+      }
+
+      const data = await response.json();
+      const analysisText = data.analysis || '분석 리포트를 불러오는데 실패했습니다.';
+
+      // 타자기 인터랙션으로 출력
+      typeWriterTerminal(ui.aiTerminalOutput, analysisText);
+    } catch (err) {
+      console.error(err);
+      ui.aiTerminalOutput.innerHTML = `
+        <p class="terminal-meta" style="color:var(--danger-red);">&gt; ERROR: AI 서버 연동에 실패했습니다.</p>
+        <p class="terminal-meta" style="color:var(--danger-red);">&gt; 원인: ${err.message}</p>
+        <p class="terminal-meta">&gt; 대책: 백엔드 서버의 .env에 GEMINI_API_KEY가 올바르게 세팅되었는지 확인하세요.</p>
+      `;
+    }
+  }
+
+  // 시세 및 AI 페이지 이벤트 바인딩
+  function bindMarketAndAiEvents() {
+    // 1) 시세 검색 이벤트
+    ui.btnMarketSearch.addEventListener('click', () => {
+      const query = ui.inputMarketSearch.value.trim();
+      if (query) {
+        searchMarketItems(query);
+      }
+    });
+
+    ui.inputMarketSearch.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const query = ui.inputMarketSearch.value.trim();
+        if (query) {
+          searchMarketItems(query);
+        }
+      }
+    });
+
+    // 2) 프리셋 퀵 태그 버튼 이벤트
+    ui.presetTags.forEach(tag => {
+      tag.addEventListener('click', () => {
+        const query = tag.getAttribute('data-query');
+        ui.inputMarketSearch.value = query;
+        searchMarketItems(query);
+      });
+    });
+
+    // 3) AI 경제 분석 분석 개시 버튼 이벤트
+    ui.btnAiAnalyze.addEventListener('click', () => {
+      triggerGeminiAnalysis();
+    });
+  }
+
+
+  // === 10. 앱 초기 구동 및 이벤트 트리거 ===
   function init() {
     handleRouting();
     updateApiStatus();
@@ -967,6 +1208,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 경매 분배금 계산기 초기화
     bindAuctionEvents();
     calculateAuctionDividends();
+
+    // 시세 및 AI 리포트 초기화
+    bindMarketAndAiEvents();
     
     if (window.lucide) {
       window.lucide.createIcons();

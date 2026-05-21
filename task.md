@@ -47,9 +47,9 @@
   - [x] 4인 / 8인 / 16인 레이드 경매 적정 손익분기점 및 10% 선점 마진 낙찰가 계산식 구현
   - *추천 커밋 메시지:* `Feat: Implement Paradise Hell rewards and Raid auction calculators`
 
-- [ ] **Step 9: 실시간 거래소 검색 및 Gemini AI 리포트 인터랙션 구현**
-  - [ ] 각인서/보석 시세 검색 리스트 및 프록시 호출 프론트 바인딩
-  - [ ] AI 애널리스트 피드 UI 및 터미널 타자기 출력 인터랙션 결합
+- [x] **Step 9: 실시간 거래소 검색 및 Gemini AI 리포트 인터랙션 구현**
+  - [x] 각인서/보석 시세 검색 리스트 및 프록시 호출 프론트 바인딩
+  - [x] AI 애널리스트 피드 UI 및 터미널 타자기 출력 인터랙션 결합
   - *추천 커밋 메시지:* `Feat: Integrate market search UI and Gemini AI typist feed`
 
 - [ ] **Step 10: 전체 통합 테스트, 예외 처리 및 최종 폴리싱**
