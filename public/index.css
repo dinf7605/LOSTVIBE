@@ -493,7 +493,11 @@ button {
 .brain-accent { background: hsla(280, 100%, 65%, 0.25); }
 .auction-accent { background: hsla(145, 90%, 45%, 0.25); }
 
-.menu-card:hover.calc-accent-card { border-color: var(--accent-cyan); box-shadow: 0 0 25px var(--accent-cyan-glow); }
+.menu-card:hover[data-navigate="calculator"] { border-color: var(--accent-cyan); box-shadow: 0 0 25px var(--accent-cyan-glow), inset 0 0 10px hsla(180, 100%, 50%, 0.1); }
+.menu-card:hover[data-navigate="spec"] { border-color: var(--accent-purple); box-shadow: 0 0 25px var(--accent-purple-glow), inset 0 0 10px hsla(280, 100%, 65%, 0.1); }
+.menu-card:hover[data-navigate="hell"] { border-color: var(--accent-gold); box-shadow: 0 0 25px var(--accent-gold-glow), inset 0 0 10px hsla(45, 100%, 55%, 0.1); }
+.menu-card:hover[data-navigate="market"] { border-color: var(--accent-purple); box-shadow: 0 0 25px var(--accent-purple-glow), inset 0 0 10px hsla(280, 100%, 65%, 0.1); }
+.menu-card:hover[data-navigate="divider"] { border-color: var(--success-green); box-shadow: 0 0 25px var(--success-green-glow), inset 0 0 10px hsla(145, 90%, 45%, 0.1); }
 
 .card-icon {
   width: 44px;
@@ -1443,6 +1447,27 @@ button {
 .preset-tag:hover {
   color: var(--text-white);
   border-color: var(--border-glow);
+}
+
+.preset-tag.engraving-tag {
+  background: hsla(45, 100%, 55%, 0.05);
+  border: 1px solid rgba(255, 170, 0, 0.15);
+  color: var(--accent-gold);
+  padding: 6px 12px;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.preset-tag.engraving-tag:hover {
+  background: hsla(45, 100%, 55%, 0.15);
+  border-color: var(--accent-gold);
+  color: var(--text-white);
+  box-shadow: 0 0 10px hsla(45, 100%, 55%, 0.2);
+  transform: translateY(-1px);
 }
 
 .market-results-list {

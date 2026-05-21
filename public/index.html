@@ -271,6 +271,10 @@
                 <span class="label">활동력 완충까지 남은 시간</span>
                 <span class="value text-cyan" id="txt-energy-fill-time">계산중...</span>
               </div>
+              <div class="timer-stat full-width" style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 8px;">
+                <span class="label">완충 예상 실제 시각</span>
+                <span class="value text-gold" id="txt-energy-fill-target-time">계산중...</span>
+              </div>
             </div>
           </div>
         </div>
@@ -587,6 +591,12 @@
             <div class="input-row">
               <label for="input-auction-price">아이템 거래소 최저 가격 (G)</label>
               <input type="number" id="input-auction-price" value="10000" min="0">
+            </div>
+            <div class="engraving-presets-wrapper" style="margin-top: 15px;">
+              <span class="label" style="display: block; margin-bottom: 8px; font-size: var(--font-xs); color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px;">🔥 인기 전설 각인서 퀵 시세 프리셋</span>
+              <div class="search-presets" id="engraving-presets-container" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 4px;">
+                <!-- JS에서 동적으로 인기 전설 각인서 10종이 렌더링됩니다 -->
+              </div>
             </div>
           </div>
 

@@ -76,6 +76,20 @@ document.addEventListener('DOMContentLoaded', () => {
       raidSize: 4
     },
 
+    // 인기 전설 각인서 10종 가격 정보 (기본값 설정 및 실시간 시세 검색 연동)
+    engravingPrices: [
+      { id: 'grudge', name: '원한 전설 각인서', searchName: '원한', price: 3200, isRealtime: false },
+      { id: 'adrenaline', name: '아드레날린 전설 각인서', searchName: '아드레날린', price: 2900, isRealtime: false },
+      { id: 'keen_blunt', name: '예리한 둔기 전설 각인서', searchName: '예리한 둔기', price: 2100, isRealtime: false },
+      { id: 'raid_captain', name: '돌격대장 전설 각인서', searchName: '돌격대장', price: 1800, isRealtime: false },
+      { id: 'hit_master', name: '타격 대장 전설 각인서', searchName: '타격 대장', price: 1500, isRealtime: false },
+      { id: 'cursed_doll', name: '저주받은 인형 전설 각인서', searchName: '저주받은 인형', price: 1200, isRealtime: false },
+      { id: 'ambush_master', name: '기습의 대가 전설 각인서', searchName: '기습의 대가', price: 1100, isRealtime: false },
+      { id: 'brawler', name: '결투의 대가 전설 각인서', searchName: '결투의 대가', price: 800, isRealtime: false },
+      { id: 'mass_increase', name: '질량 증가 전설 각인서', searchName: '질량 증가', price: 500, isRealtime: false },
+      { id: 'awakening', name: '각성 전설 각인서', searchName: '각성', price: 400, isRealtime: false }
+    ],
+
     // AI 분석 타자기 상태
     isAiTyping: false
   };
@@ -132,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     txtRequiredEnergy: document.getElementById('txt-required-energy'),
     txtRequiredTime: document.getElementById('txt-required-time'),
     txtEnergyFillTime: document.getElementById('txt-energy-fill-time'),
+    txtEnergyFillTargetTime: document.getElementById('txt-energy-fill-target-time'),
 
     // 스펙 & 진단기 입력 UI
     inputCritStat: document.getElementById('input-crit-stat'),
@@ -172,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 경매 분배금 계산기 UI
     inputAuctionPrice: document.getElementById('input-auction-price'),
+    engravingPresetsContainer: document.getElementById('engraving-presets-container'),
     raidSizeButtons: document.querySelectorAll('.size-btn'),
     txtBidBreakEven: document.getElementById('txt-bid-break-even'),
     txtBidRecommend: document.getElementById('txt-bid-recommend'),
@@ -588,6 +604,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentEnergy >= maxEnergy) {
       ui.txtEnergyFillTime.textContent = '이미 완전히 충전되었습니다.';
       ui.txtEnergyFillTime.className = 'value text-green';
+      if (ui.txtEnergyFillTargetTime) {
+        ui.txtEnergyFillTargetTime.textContent = '지금 즉시 가능';
+        ui.txtEnergyFillTargetTime.className = 'value text-green';
+      }
     } else {
       const neededEnergy = maxEnergy - currentEnergy;
       const totalMinutes = neededEnergy / 15;
@@ -596,6 +616,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       ui.txtEnergyFillTime.textContent = `${hours}시간 ${minutes}분 남음`;
       ui.txtEnergyFillTime.className = 'value text-cyan';
+
+      if (ui.txtEnergyFillTargetTime) {
+        const now = new Date();
+        const targetTime = new Date(now.getTime() + totalMinutes * 60 * 1000);
+        const month = targetTime.getMonth() + 1;
+        const date = targetTime.getDate();
+        const hoursStr = String(targetTime.getHours()).padStart(2, '0');
+        const minutesStr = String(targetTime.getMinutes()).padStart(2, '0');
+        ui.txtEnergyFillTargetTime.textContent = `${month}월 ${date}일 ${hoursStr}:${minutesStr}`;
+        ui.txtEnergyFillTargetTime.className = 'value text-gold';
+      }
     }
   }
 
@@ -899,6 +930,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 8. 레이드 경매 분배금 계산기 ===
 
+  function renderEngravingPresets() {
+    if (!ui.engravingPresetsContainer) return;
+    ui.engravingPresetsContainer.innerHTML = '';
+
+    state.engravingPrices.forEach(item => {
+      const btn = document.createElement('button');
+      btn.className = 'preset-tag engraving-tag';
+      
+      const typeLabel = item.isRealtime ? '실시간' : '기본';
+      btn.innerHTML = `
+        <span style="display:block; font-size: 11px; font-weight:700;">${item.searchName}</span>
+        <span style="display:block; font-size: 9px; opacity:0.8; margin-top:2px;">${item.price.toLocaleString()}G (${typeLabel})</span>
+      `;
+      
+      btn.addEventListener('click', () => {
+        ui.inputAuctionPrice.value = item.price;
+        state.auction.marketPrice = item.price;
+        calculateAuctionDividends();
+        
+        ui.engravingPresetsContainer.querySelectorAll('.preset-tag').forEach(b => {
+          b.style.borderColor = 'rgba(255, 170, 0, 0.15)';
+          b.style.background = 'hsla(45, 100%, 55%, 0.05)';
+        });
+        btn.style.borderColor = 'var(--accent-gold)';
+        btn.style.background = 'hsla(45, 100%, 55%, 0.2)';
+      });
+
+      ui.engravingPresetsContainer.appendChild(btn);
+    });
+  }
+
   function calculateAuctionDividends() {
     const marketPrice = state.auction.marketPrice;
     const N = state.auction.raidSize;
@@ -919,9 +981,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function bindAuctionEvents() {
+    renderEngravingPresets();
+
     ui.inputAuctionPrice.addEventListener('input', (e) => {
       state.auction.marketPrice = parseFloat(e.target.value) || 0;
       calculateAuctionDividends();
+      
+      // 가격을 직접 입력하면 프리셋의 활성화 보더 색상 초기화
+      if (ui.engravingPresetsContainer) {
+        ui.engravingPresetsContainer.querySelectorAll('.preset-tag').forEach(b => {
+          b.style.borderColor = 'rgba(255, 170, 0, 0.15)';
+          b.style.background = 'hsla(45, 100%, 55%, 0.05)';
+        });
+      }
     });
 
     ui.raidSizeButtons.forEach(btn => {
@@ -1000,6 +1072,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // 검색 결과 목록 UI 바인딩
   function renderMarketResults(items) {
     ui.marketSearchResults.innerHTML = '';
+
+    // 실시간 시세 연동 체크 (유저가 검색한 최신 시세를 전설 각인서 프리셋에 양방향 동기화)
+    let hasUpdatedEngravings = false;
+    items.forEach(resItem => {
+      const matched = state.engravingPrices.find(ep => 
+        resItem.Name.includes(ep.searchName) && resItem.Name.includes('각인서') && resItem.Name.includes('전설')
+      );
+      if (matched) {
+        matched.price = resItem.CurrentMinPrice;
+        matched.isRealtime = true;
+        hasUpdatedEngravings = true;
+      }
+    });
+    if (hasUpdatedEngravings) {
+      renderEngravingPresets();
+    }
 
     // API Key가 등록되지 않아 모의 데이터 데모 모드로 작동 중일 경우 예쁜 안내 배너 보강
     if (!state.apiKey) {
