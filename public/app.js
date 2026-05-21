@@ -76,18 +76,18 @@ document.addEventListener('DOMContentLoaded', () => {
       raidSize: 4
     },
 
-    // 인기 전설 각인서 10종 가격 정보 (기본값 설정 및 실시간 시세 검색 연동)
+    // 인기 유물 각인서 10종 가격 정보 (기본값 설정 및 실시간 시세 검색 연동)
     engravingPrices: [
-      { id: 'grudge', name: '원한 전설 각인서', searchName: '원한', price: 3200, isRealtime: false },
-      { id: 'adrenaline', name: '아드레날린 전설 각인서', searchName: '아드레날린', price: 2900, isRealtime: false },
-      { id: 'keen_blunt', name: '예리한 둔기 전설 각인서', searchName: '예리한 둔기', price: 2100, isRealtime: false },
-      { id: 'raid_captain', name: '돌격대장 전설 각인서', searchName: '돌격대장', price: 1800, isRealtime: false },
-      { id: 'hit_master', name: '타격 대장 전설 각인서', searchName: '타격 대장', price: 1500, isRealtime: false },
-      { id: 'cursed_doll', name: '저주받은 인형 전설 각인서', searchName: '저주받은 인형', price: 1200, isRealtime: false },
-      { id: 'ambush_master', name: '기습의 대가 전설 각인서', searchName: '기습의 대가', price: 1100, isRealtime: false },
-      { id: 'brawler', name: '결투의 대가 전설 각인서', searchName: '결투의 대가', price: 800, isRealtime: false },
-      { id: 'mass_increase', name: '질량 증가 전설 각인서', searchName: '질량 증가', price: 500, isRealtime: false },
-      { id: 'awakening', name: '각성 전설 각인서', searchName: '각성', price: 400, isRealtime: false }
+      { id: 'grudge', name: '원한 유물 각인서', searchName: '원한', price: 65000, isRealtime: false },
+      { id: 'adrenaline', name: '아드레날린 유물 각인서', searchName: '아드레날린', price: 58000, isRealtime: false },
+      { id: 'keen_blunt', name: '예리한 둔기 유물 각인서', searchName: '예리한 둔기', price: 42000, isRealtime: false },
+      { id: 'raid_captain', name: '돌격대장 유물 각인서', searchName: '돌격대장', price: 35000, isRealtime: false },
+      { id: 'hit_master', name: '타격 대장 유물 각인서', searchName: '타격 대장', price: 28000, isRealtime: false },
+      { id: 'ambush_master', name: '기습의 대가 유물 각인서', searchName: '기습의 대가', price: 24000, isRealtime: false },
+      { id: 'cursed_doll', name: '저주받은 인형 유물 각인서', searchName: '저주받은 인형', price: 22000, isRealtime: false },
+      { id: 'brawler', name: '결투의 대가 유물 각인서', searchName: '결투의 대가', price: 15000, isRealtime: false },
+      { id: 'mass_increase', name: '질량 증가 유물 각인서', searchName: '질량 증가', price: 8000, isRealtime: false },
+      { id: 'awakening', name: '각성 유물 각인서', searchName: '각성', price: 7000, isRealtime: false }
     ],
 
     // AI 분석 타자기 상태
@@ -225,6 +225,10 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.remove('active');
       }
     });
+
+    if (pageId === 'divider') {
+      updateEngravingPricesFromApi();
+    }
 
     if (window.location.hash !== `#/${pageId}`) {
       window.location.hash = `#/${pageId}`;
@@ -930,6 +934,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 8. 레이드 경매 분배금 계산기 ===
 
+  // 유물 각인서 10종 실시간 일괄 조회 함수 (API 한도 최적화를 위해 한 번에 긁어오기 설계)
+  async function updateEngravingPricesFromApi() {
+    if (!state.apiKey) return; // API Key가 없으면 기본값 모의 사용
+
+    try {
+      const response = await fetch('/api/market', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-lostark-api-key': state.apiKey
+        },
+        body: JSON.stringify({
+          Sort: 'CURRENT_MIN_PRICE',
+          CategoryCode: 40000, // 각인서 카테고리
+          CharacterClass: '',
+          ItemTier: 4,
+          ItemGrade: '유물', // 유물 등급 각인서만 필터링
+          ItemName: '',      // 전체 조회
+          PageNo: 1,
+          SortCondition: 'DESC'
+        })
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data && data.Items) {
+        let updated = false;
+        data.Items.forEach(apiItem => {
+          const matched = state.engravingPrices.find(ep => 
+            apiItem.Name.includes(ep.searchName) && apiItem.Name.includes('각인서') && apiItem.Name.includes('유물')
+          );
+          if (matched) {
+            matched.price = apiItem.CurrentMinPrice;
+            matched.isRealtime = true;
+            updated = true;
+          }
+        });
+        
+        if (updated) {
+          renderEngravingPresets();
+        }
+      }
+    } catch (err) {
+      console.error('유물 각인서 실시간 시세 일괄 동기화 실패:', err);
+    }
+  }
+
   function renderEngravingPresets() {
     if (!ui.engravingPresetsContainer) return;
     ui.engravingPresetsContainer.innerHTML = '';
@@ -1077,7 +1129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let hasUpdatedEngravings = false;
     items.forEach(resItem => {
       const matched = state.engravingPrices.find(ep => 
-        resItem.Name.includes(ep.searchName) && resItem.Name.includes('각인서') && resItem.Name.includes('전설')
+        resItem.Name.includes(ep.searchName) && resItem.Name.includes('각인서') && resItem.Name.includes('유물')
       );
       if (matched) {
         matched.price = resItem.CurrentMinPrice;
