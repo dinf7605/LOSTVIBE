@@ -1,6 +1,6 @@
 /**
  * LOSTVIBE - 프론트엔드 메인 컨트롤러 (app.js)
- * SPA 라우팅, API Key 설정, 실시간 캘린더, 아비도스 제작 계산기, 영지 타이머, 스펙 효율 진단기 연동
+ * SPA 라우팅, API Key 설정, 실시간 캘린더, 아비도스 제작 계산기, 영지 타이머, 스펙 효율 진단기, 낙원 지옥 보상 비교, 경매 분배금 연산 통합
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     calendarData: null,
     timerIntervalId: null,
 
-    // 아비도스 제작 효율 계산기 상태값
+    // 제작 효율 계산기 상태값
     craftType: 'normal',
     selectedSkill: 'archaeology',
     sellPrice: 280,
@@ -42,16 +42,41 @@ document.addEventListener('DOMContentLoaded', () => {
     spec: {
       crit: 1200,
       swift: 1600,
-      adr: 15,           // 아드레날린 각인 치적 %
-      synergy: 10,       // 시너지 치적 %
-      bracelet: 3,       // 팔찌 치적 %
-      manualCrit: 0,     // 수동 추가 치적 %
-      yearning: 12,      // 갈망 버프 속도 %
-      feast: true,       // 만찬 속도 5% 적용 여부
-      massIncrease: false, // 질증 속도 -10% 적용 여부
-      manualSpeed: 0,    // 수동 추가 공이속 %
-      critDamage: 200,   // 기본 치명타 피해량 %
-      mungaLevel: 2      // 뭉툭한 가시 노드 레벨
+      adr: 15,
+      synergy: 10,
+      bracelet: 3,
+      manualCrit: 0,
+      yearning: 12,
+      feast: true,
+      massIncrease: false,
+      manualSpeed: 0,
+      critDamage: 200,
+      mungaLevel: 2
+    },
+
+    // 낙원 지옥 보상 단계
+    hellLevel: '1640', // '1640', '1700', '1730'
+    
+    // 낙원 아이템 가격 참조 데이터 (실시간 시세 연동 및 환산용)
+    hellPrices: {
+      // 복원석
+      restorationLow: 1200,
+      restorationMid: 2500,
+      restorationHigh: 5500,
+      // 공명석
+      resonanceLow: 400,
+      resonanceMid: 800,
+      resonanceHigh: 1800,
+      // 4티어 보석
+      gemLvl4: 3500,
+      gemLvl5: 10500,
+      gemLvl6: 31500
+    },
+
+    // 경매 분배금 계산기 상태값
+    auction: {
+      marketPrice: 10000,
+      raidSize: 4 // 4인, 8인, 16인
     }
   };
 
@@ -137,7 +162,22 @@ document.addEventListener('DOMContentLoaded', () => {
     txtSonicSum: document.getElementById('txt-sonic-sum'),
     barSonicFill: document.getElementById('bar-sonic-fill'),
     txtSonicDamage: document.getElementById('txt-sonic-damage'),
-    txtSonicDesc: document.getElementById('txt-sonic-desc')
+    txtSonicDesc: document.getElementById('txt-sonic-desc'),
+
+    // 낙원 지옥 보상 UI
+    hellLevelButtons: document.querySelectorAll('#page-hell .tab-toggle button'),
+    hellRewardsContainer: document.getElementById('hell-rewards-container'),
+    txtBestRewardName: document.getElementById('txt-best-reward-name'),
+    txtBestRewardGold: document.getElementById('txt-best-reward-gold'),
+
+    // 경매 분배금 계산기 UI
+    inputAuctionPrice: document.getElementById('input-auction-price'),
+    raidSizeButtons: document.querySelectorAll('.size-btn'),
+    txtBidBreakEven: document.getElementById('txt-bid-break-even'),
+    txtBidRecommend: document.getElementById('txt-bid-recommend'),
+    txtAuctionBaseVal: document.getElementById('txt-auction-base-val'),
+    txtAuctionTaxVal: document.getElementById('txt-auction-tax-val'),
+    txtAuctionDividend: document.getElementById('txt-auction-dividend')
   };
 
   // === 2. SPA 라우터 및 네비게이션 제어 ===
@@ -614,22 +654,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function calculateSpecDiagnosis() {
     const spec = state.spec;
 
-    // 1) 치명타 적중률 (치적) 정밀 계산
-    // 치명 스탯 환산 (시즌 3 공식: 1 치명 ≈ 0.0357%)
     const critFromStat = spec.crit * 0.0357;
-    // 종합 치적 합산
     const calcCrit = critFromStat + spec.adr + spec.synergy + spec.bracelet + spec.manualCrit;
     ui.txtCalcCrit.textContent = `${calcCrit.toFixed(2)}%`;
 
-    // 뭉가 미채용 시/채용 시 최종 치적 (뭉가는 실질 치적을 100%로 캡핑)
     const finalCrit = Math.min(100, calcCrit);
     ui.txtFinalCrit.textContent = `${finalCrit.toFixed(2)}%`;
 
-
-    // 2) 뭉툭한 가시 (Blunt Thorn) 진단
-    const excessCrit = Math.max(0, calcCrit - 100); // 100%를 초과한 치적
+    const excessCrit = Math.max(0, calcCrit - 100);
     let mungaConvertRate = 0;
-    let maxMungaLimit = 75.0; // 2레벨 기준 상한
+    let maxMungaLimit = 75.0;
 
     if (spec.mungaLevel === 1) {
       mungaConvertRate = excessCrit * 1.25;
@@ -639,25 +673,19 @@ document.addEventListener('DOMContentLoaded', () => {
       maxMungaLimit = 75.0;
     }
 
-    // 상한 캡 적용
     const finalMungaDamage = Math.min(maxMungaLimit, mungaConvertRate);
 
-    // 게이지 바 충전율 반영
     const mungaFillPercent = Math.min(100, (finalMungaDamage / maxMungaLimit) * 100);
     ui.barMungaFill.style.width = `${mungaFillPercent}%`;
     ui.txtMungaConvertRate.textContent = `${finalMungaDamage.toFixed(2)}% / ${maxMungaLimit.toFixed(1)}%`;
 
-    // 일반 딜 기댓값 비교 공식 연산
-    // E_normal = 1 + C_normal * (치피 - 1)
     const critDmgMultiplier = (spec.critDamage / 100) - 1;
     const E_normal = 1 + (finalCrit / 100) * critDmgMultiplier;
-    // E_munga = E_normal * (1 + 진피증/100)
     const E_munga = E_normal * (1 + finalMungaDamage / 100);
     const mungaEfficiency = (E_munga / E_normal - 1) * 100;
 
     ui.txtMungaEfficiency.textContent = `+${mungaEfficiency.toFixed(2)}%`;
 
-    // 뭉툭한 가시 진단 피드백 갱신
     if (calcCrit <= 100) {
       ui.badgeMunga.textContent = '비효율';
       ui.badgeMunga.className = 'badge border-danger text-danger';
@@ -675,40 +703,29 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-
-    // 3) 음속 돌파 (Sonic Breakthrough) 진단
-    // 신속 스탯 환산 (시즌 3 공식: 1 신속 ≈ 0.01717%)
     const speedFromSwift = spec.swift * 0.01717;
-
-    // 만찬, 갈망, 질증 디버프 여부 종합
     const feastBuff = spec.feast ? 5.0 : 0.0;
     const massPenalty = spec.massIncrease ? -10.0 : 0.0;
 
-    // 최종 공속 및 이속 합산 (기본 속도 100% 시작)
     const finalAtkSpeed = 100 + speedFromSwift + spec.yearning + feastBuff + massPenalty + spec.manualSpeed;
     const finalMoveSpeed = 100 + speedFromSwift + spec.yearning + feastBuff + spec.manualSpeed;
 
-    // 화면 표시
     ui.txtFinalAtkSpeed.textContent = `${finalAtkSpeed.toFixed(2)}%`;
     ui.txtFinalMoveSpeed.textContent = `${finalMoveSpeed.toFixed(2)}%`;
 
-    // 140% 상한 초과분 계산
     const excessAtk = Math.max(0, finalAtkSpeed - 140);
     const excessMove = Math.max(0, finalMoveSpeed - 140);
     const excessSum = excessAtk + excessMove;
 
-    // 음속 돌파 진피증 획득량 = 초과분 합산 * 0.3
     const sonicDamage = excessSum * 0.3;
     ui.txtSonicDamage.textContent = `+${sonicDamage.toFixed(2)}%`;
 
-    // 게이지바 타겟은 풀 효율 기준 속도 합산 (상한인 140% 기준 풀초과 306.67% 목표)
     const actualSum = finalAtkSpeed + finalMoveSpeed;
     const maxTargetSum = 306.67;
     ui.txtSonicSum.textContent = `${actualSum.toFixed(1)}% / ${maxTargetSum.toFixed(1)}%`;
     const sonicFillPercent = Math.min(100, (actualSum / maxTargetSum) * 100);
     ui.barSonicFill.style.width = `${sonicFillPercent}%`;
 
-    // 음속 돌파 피드백 업데이트
     if (sonicDamage <= 0) {
       ui.badgeSonic.textContent = '비활성';
       ui.badgeSonic.className = 'badge border-muted text-muted';
@@ -722,14 +739,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (actualSum >= maxTargetSum) {
         ui.txtSonicDesc.innerHTML = `최종 합산 속도가 <strong class="text-green">${actualSum.toFixed(1)}%</strong>에 달하여 음속 돌파로 획득 가능한 <strong class="text-purple">최대 진화 피해 증가량 한계치</strong>에 돌파 완료했습니다! 극신속 딜러 특유의 시원시원하고 압도적인 화력을 극한까지 뿜어내고 있는 명품 세팅입니다.`;
       } else {
-        ui.txtSonicDesc.innerHTML = `140% 상 상한 초과분 속도가 유기적으로 환산되어 <strong class="text-cyan">진화 피해 증가 +${sonicDamage.toFixed(2)}%</strong>를 안전하게 확보하고 있습니다. 신속 딜러로서 매우 훌륭한 속도 최적화 수준입니다.`;
+        ui.txtSonicDesc.innerHTML = `140% 상 한 상한 초과분 속도가 유기적으로 환산되어 <strong class="text-cyan">진화 피해 증가 +${sonicDamage.toFixed(2)}%</strong>를 안전하게 확보하고 있습니다. 신속 딜러로서 매우 훌륭한 속도 최적화 수준입니다.`;
       }
     }
   }
 
-  // 캐릭터 스펙 관련 실시간 이벤트 바인딩
   function bindSpecEvents() {
-    // 특성 스탯 인풋 이벤트
     ui.inputCritStat.addEventListener('input', (e) => {
       state.spec.crit = parseInt(e.target.value) || 0;
       calculateSpecDiagnosis();
@@ -740,7 +755,6 @@ document.addEventListener('DOMContentLoaded', () => {
       calculateSpecDiagnosis();
     });
 
-    // 치적 보조 설정 이벤트
     ui.selectAdrenaline.addEventListener('change', (e) => {
       state.spec.adr = parseFloat(e.target.value) || 0;
       calculateSpecDiagnosis();
@@ -761,7 +775,6 @@ document.addEventListener('DOMContentLoaded', () => {
       calculateSpecDiagnosis();
     });
 
-    // 공이속 보조 설정 이벤트
     ui.selectYearning.addEventListener('change', (e) => {
       state.spec.yearning = parseFloat(e.target.value) || 0;
       calculateSpecDiagnosis();
@@ -782,7 +795,6 @@ document.addEventListener('DOMContentLoaded', () => {
       calculateSpecDiagnosis();
     });
 
-    // 뭉가 상세 연산 설정 이벤트
     ui.inputCritDamage.addEventListener('input', (e) => {
       state.spec.critDamage = parseFloat(e.target.value) || 200;
       calculateSpecDiagnosis();
@@ -795,7 +807,144 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  // === 7. 앱 초기 구동 및 이벤트 트리거 ===
+  // === 7. 낙원 지옥 보상 효율 계산기 ===
+
+  // 낙원 지옥 단계별 보상 가치 비교 연산
+  function calculateHellRewards() {
+    const prices = state.hellPrices;
+    const level = state.hellLevel;
+    let rewards = [];
+
+    if (level === '1640') {
+      // 1단계
+      const valA = (prices.restorationLow * 5) + (prices.resonanceLow * 15);
+      const valB = prices.gemLvl4;
+      const valC = 15000; // 귀속 골드
+
+      rewards = [
+        { name: '재련 보조재 패키지 (하급)', desc: `하급 복원석 5개 + 하급 공명석 15개`, gold: valA, icon: 'gem', type: 'material' },
+        { name: '4티어 보석 보상', desc: `4티어 4레벨 청화/홍염 보석 1개`, gold: valB, icon: 'shield', type: 'gem' },
+        { name: '순수 귀속 골드', desc: `즉시 획득 가능한 귀속 골드`, gold: valC, icon: 'coins', type: 'gold' }
+      ];
+    } else if (level === '1700') {
+      // 2단계
+      const valA = (prices.restorationMid * 5) + (prices.resonanceMid * 15);
+      const valB = prices.gemLvl5;
+      const valC = 25000;
+
+      rewards = [
+        { name: '재련 보조재 패키지 (중급)', desc: `중급 복원석 5개 + 중급 공명석 15개`, gold: valA, icon: 'gem', type: 'material' },
+        { name: '4티어 보석 보상', desc: `4티어 5레벨 청화/홍염 보석 1개`, gold: valB, icon: 'shield', type: 'gem' },
+        { name: '순수 귀속 골드', desc: `즉시 획득 가능한 귀속 골드`, gold: valC, icon: 'coins', type: 'gold' }
+      ];
+    } else {
+      // 3단계 (1730)
+      const valA = (prices.restorationHigh * 5) + (prices.resonanceHigh * 15);
+      const valB = prices.gemLvl6;
+      const valC = 40000;
+
+      rewards = [
+        { name: '재련 보조재 패키지 (상급)', desc: `상급 복원석 5개 + 상급 공명석 15개`, gold: valA, icon: 'gem', type: 'material' },
+        { name: '4티어 보석 보상', desc: `4티어 6레벨 청화/홍염 보석 1개`, gold: valB, icon: 'shield', type: 'gem' },
+        { name: '순수 귀속 골드', desc: `즉시 획득 가능한 귀속 골드`, gold: valC, icon: 'coins', type: 'gold' }
+      ];
+    }
+
+    // 골드 가치 내림차순 정렬
+    rewards.sort((a, b) => b.gold - a.gold);
+
+    // 카드 목록 렌더링
+    ui.hellRewardsContainer.innerHTML = '';
+    rewards.forEach((reward, index) => {
+      const rankClass = index === 0 ? 'border-gold' : (index === 1 ? 'border-cyan' : '');
+      const badgeText = index === 0 ? '👑 1위 BEST' : `${index + 1}위`;
+      const badgeClass = index === 0 ? 'text-gold' : 'text-cyan';
+
+      const card = document.createElement('div');
+      card.className = `hell-reward-card ${rankClass}`;
+      card.innerHTML = `
+        <div class="card-inner-layout" style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 20px; background: var(--bg-card); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); margin-bottom: 15px;">
+          <div>
+            <span class="rank-badge ${badgeClass}" style="font-size: 11px; font-weight: 800; display: block; margin-bottom: 6px;">${badgeText}</span>
+            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">${reward.name}</h3>
+            <p style="font-size: 12px; color: var(--text-muted);">${reward.desc}</p>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 800; color: var(--text-white);">${reward.gold.toLocaleString()}</span>
+            <span style="font-size: 12px; color: var(--accent-gold); font-weight: 700; margin-left: 2px;">G 상당</span>
+          </div>
+        </div>
+      `;
+      ui.hellRewardsContainer.appendChild(card);
+    });
+
+    // 베스트 초이스 요약카드 업데이트
+    const best = rewards[0];
+    ui.txtBestRewardName.textContent = best.name;
+    ui.txtBestRewardGold.textContent = best.gold.toLocaleString();
+  }
+
+  // 낙원 지옥 이벤트 바인딩
+  function bindHellEvents() {
+    ui.hellLevelButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        ui.hellLevelButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.hellLevel = btn.getAttribute('data-level');
+        calculateHellRewards();
+      });
+    });
+  }
+
+
+  // === 8. 레이드 경매 분배금 계산기 ===
+
+  // 경매 분배금 실시간 연산 및 UI 갱신
+  function calculateAuctionDividends() {
+    const marketPrice = state.auction.marketPrice;
+    const N = state.auction.raidSize;
+
+    // 아이템 원본 가치
+    ui.txtAuctionBaseVal.textContent = `${marketPrice.toLocaleString()} G`;
+
+    // 5% 판매 수수료 제외한 거래소 실질 가치
+    const taxVal = marketPrice * 0.95;
+    ui.txtAuctionTaxVal.textContent = `${taxVal.toLocaleString()} G`;
+
+    // 손익분기점 적정 입찰가 (B_breakeven = 거래소 실질가치 * (N-1) / N)
+    const breakEven = taxVal * ((N - 1) / N);
+    ui.txtBidBreakEven.textContent = Math.round(breakEven).toLocaleString();
+
+    // 추천 이득 선점 입찰가 (수수료 제외 확실한 10%의 순수익 마진 확보: B_recommend = B_breakeven * 0.91)
+    const recommend = breakEven * 0.91;
+    ui.txtBidRecommend.textContent = Math.round(recommend).toLocaleString();
+
+    // 인당 예상 분배금 (적정가 낙찰 기준)
+    const dividend = breakEven * 0.95 / N; // 실제 인당 돌아가는 순수 배당금
+    ui.txtAuctionDividend.textContent = `${Math.round(dividend).toLocaleString()} G`;
+  }
+
+  // 경매 분배금 이벤트 바인딩
+  function bindAuctionEvents() {
+    // 아이템 시세 입력 감지
+    ui.inputAuctionPrice.addEventListener('input', (e) => {
+      state.auction.marketPrice = parseFloat(e.target.value) || 0;
+      calculateAuctionDividends();
+    });
+
+    // 레이드 인원 버튼 전환 토글
+    ui.raidSizeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        ui.raidSizeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.auction.raidSize = parseInt(btn.getAttribute('data-size')) || 4;
+        calculateAuctionDividends();
+      });
+    });
+  }
+
+
+  // === 9. 앱 초기 구동 및 이벤트 트리거 ===
   function init() {
     handleRouting();
     updateApiStatus();
@@ -810,6 +959,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // 캐릭터 스펙 진단기 초기화
     bindSpecEvents();
     calculateSpecDiagnosis();
+
+    // 낙원 지옥 보상 효율 초기화
+    bindHellEvents();
+    calculateHellRewards();
+
+    // 경매 분배금 계산기 초기화
+    bindAuctionEvents();
+    calculateAuctionDividends();
     
     if (window.lucide) {
       window.lucide.createIcons();
