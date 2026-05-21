@@ -136,41 +136,63 @@ ${JSON.stringify(specData, null, 2)}
   3. 🔮 **종합 행동 강령 3가지**: 유저가 지금 즉시 실행해야 할 행동 요령 3가지를 명확하게 핵심 요약.
 `;
 
-  try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ]
-      })
-    });
+  let apiSuccess = false;
+  let aiResponseText = '';
+  let errorDetails = null;
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return res.status(response.status).json({
-        error: 'Gemini AI API 호출 실패',
-        details: errorData
+  // 유저 요청에 따라 최신 정식 모델(gemini-2.5-flash)을 우선 탑재하고, 
+  // API 지원 여부 및 일시적 오류에 완벽하게 우회 대응하기 위해 순차적 모델 폴백 체인을 설계합니다.
+  const modelsToTry = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash'
+  ];
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`[Gemini AI] ${modelName} 모델로 분석 생성을 시도 중...`);
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ]
+        })
       });
-    }
 
-    const result = await response.json();
-    const aiResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text || 'AI 분석 결과 생성에 실패했습니다.';
-    
+      if (response.ok) {
+        const result = await response.json();
+        aiResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (aiResponseText) {
+          apiSuccess = true;
+          console.log(`[Gemini AI] 성공: ${modelName} 모델 호출에 완벽히 성공했습니다.`);
+          break;
+        }
+      } else {
+        errorDetails = await response.json().catch(() => ({}));
+        console.warn(`[Gemini AI] 경고: ${modelName} 모델 응답 실패. 상세 정보:`, errorDetails);
+      }
+    } catch (err) {
+      console.warn(`[Gemini AI] 경고: ${modelName} 호출 중 예외 발생:`, err.message);
+      errorDetails = { message: err.message };
+    }
+  }
+
+  if (apiSuccess) {
     res.json({ analysis: aiResponseText });
-  } catch (error) {
+  } else {
     res.status(500).json({
-      error: '백엔드 서버 AI 분석 오류',
-      message: error.message
+      error: 'Gemini AI API 모든 최신 모델 호출 실패',
+      details: errorDetails
     });
   }
 });
