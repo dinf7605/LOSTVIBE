@@ -1893,11 +1893,19 @@ button {
   }
   
   .nav-links {
-    display: none; /* Hide header tabs and rely on menu card routing */
+    display: none; /* 헤더 내비게이션을 숨기고 하단 플로팅 탭 바 활성화 */
   }
   
   .hell-layout {
     grid-template-columns: 1fr;
+  }
+
+  .mobile-bottom-nav {
+    display: flex; /* 992px 이하 모바일 환경에서 활성화 */
+  }
+
+  body {
+    padding-bottom: 90px; /* 플로팅 탭 바에 의해 하단 콘텐츠가 가려지는 현상 방지 */
   }
 }
 
@@ -1918,3 +1926,68 @@ button {
     font-size: 32px;
   }
 }
+
+/* ==========================================================================
+   MOBILE FLOATING BOTTOM NAV BAR (모바일 하단 플로팅 내비게이션 바 스타일)
+   ========================================================================== */
+.mobile-bottom-nav {
+  display: none; /* 데스크톱 기본 상태에서는 보이지 않음 */
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 500px;
+  height: 65px;
+  background: hsla(224, 25%, 8%, 0.85);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(16px);
+  border-radius: 40px;
+  box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.5), 0 0 20px hsla(180, 100%, 50%, 0.05);
+  z-index: 999;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 10px;
+  transition: var(--transition-smooth);
+}
+
+.mobile-bottom-nav .nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 8px 0;
+  width: 60px;
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  transition: var(--transition-smooth);
+}
+
+.mobile-bottom-nav .nav-btn i {
+  width: 20px;
+  height: 20px;
+  transition: var(--transition-smooth);
+}
+
+.mobile-bottom-nav .nav-btn:hover {
+  color: var(--text-white);
+  background: transparent;
+}
+
+.mobile-bottom-nav .nav-btn.active {
+  color: var(--accent-cyan);
+  background: transparent;
+  text-shadow: 0 0 8px var(--accent-cyan-glow);
+  box-shadow: none;
+}
+
+.mobile-bottom-nav .nav-btn.active i {
+  color: var(--accent-cyan);
+  filter: drop-shadow(0 0 5px var(--accent-cyan));
+}
+
