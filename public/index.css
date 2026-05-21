@@ -2016,3 +2016,239 @@ button {
   filter: drop-shadow(0 0 5px var(--accent-cyan));
 }
 
+/* ==========================================================================
+   MARKET LIVE DASHBOARD & FINANCIAL STYLES
+   ========================================================================== */
+.market-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .market-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gem-board-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rank-board-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  height: 380px; /* 고정 높이 제공하여 테이블 스크롤 바를 정갈하게 만듬 */
+}
+
+.gem-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  flex: 1;
+  align-content: center;
+}
+
+@media (max-width: 600px) {
+  .gem-dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.dashboard-loading, .table-loading {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dashboard-loading i, .table-loading i {
+  width: 24px;
+  height: 24px;
+}
+
+/* Gem Dashboard Cards */
+.gem-mini-card {
+  background: hsla(224, 25%, 5%, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: 12px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 110px;
+}
+
+.gem-mini-card:hover {
+  transform: translateY(-2px);
+}
+
+/* T4 겁화: 화염빛 (Red/Orange 네온) */
+.gem-mini-card.gem-type-fire {
+  border-color: rgba(255, 90, 0, 0.25);
+  background: linear-gradient(180deg, hsla(10, 100%, 50%, 0.03) 0%, hsla(224, 25%, 5%, 0.4) 100%);
+}
+
+.gem-mini-card.gem-type-fire:hover {
+  border-color: hsl(15, 100%, 50%);
+  box-shadow: 0 0 15px hsla(15, 100%, 50%, 0.2);
+}
+
+.gem-mini-card.gem-type-fire .gem-icon-label {
+  color: hsl(15, 100%, 60%);
+  text-shadow: 0 0 8px hsla(15, 100%, 50%, 0.5);
+}
+
+/* T4 작열: 빙결빛 (Cyan/Blue 네온) */
+.gem-mini-card.gem-type-ice {
+  border-color: rgba(0, 180, 255, 0.25);
+  background: linear-gradient(180deg, hsla(190, 100%, 50%, 0.03) 0%, hsla(224, 25%, 5%, 0.4) 100%);
+}
+
+.gem-mini-card.gem-type-ice:hover {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 15px var(--accent-cyan-glow);
+}
+
+.gem-mini-card.gem-type-ice .gem-icon-label {
+  color: var(--accent-cyan);
+  text-shadow: 0 0 8px var(--accent-cyan-glow);
+}
+
+.gem-mini-card h4 {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-white);
+  margin-top: 4px;
+}
+
+.gem-mini-card .gem-price-val {
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-white);
+  margin-top: auto;
+}
+
+.gem-mini-card .gem-price-val span {
+  font-size: 10px;
+  color: var(--accent-gold);
+  margin-left: 2px;
+}
+
+.gem-mini-card .gem-change-val {
+  font-size: 9.5px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* Financial Rankings Table */
+.engraving-rank-container {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Custom Scrollbar for Engraving Rank */
+.engraving-rank-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.engraving-rank-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.engraving-rank-container::-webkit-scrollbar-thumb {
+  background: hsla(224, 25%, 20%, 0.5);
+  border-radius: 3px;
+}
+
+.engraving-rank-container::-webkit-scrollbar-thumb:hover {
+  background: hsla(224, 25%, 30%, 0.7);
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dashboard-table th {
+  padding: 8px 10px;
+  font-weight: 800;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel);
+  z-index: 1;
+}
+
+.dashboard-table td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.dashboard-table tr:hover td {
+  background: hsla(224, 25%, 15%, 0.2);
+  color: var(--text-white);
+}
+
+.dashboard-table .col-rank {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  width: 50px;
+}
+
+.dashboard-table tr:nth-child(1) .col-rank { color: var(--accent-gold); }
+.dashboard-table tr:nth-child(2) .col-rank { color: hsl(0, 0%, 80%); }
+.dashboard-table tr:nth-child(3) .col-rank { color: hsl(35, 60%, 65%); }
+
+.dashboard-table .col-name {
+  color: var(--text-white);
+  font-weight: 700;
+}
+
+.dashboard-table .col-price {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  color: var(--text-white);
+}
+
+.dashboard-table .col-diff {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 11.5px;
+}
+
+.trend-up {
+  color: var(--accent-cyan);
+}
+
+.trend-down {
+  color: var(--danger-red);
+}
+
+.trend-flat {
+  color: var(--text-dim);
+}

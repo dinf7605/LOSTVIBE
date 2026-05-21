@@ -91,7 +91,12 @@ document.addEventListener('DOMContentLoaded', () => {
     ],
 
     // AI 분석 타자기 상태
-    isAiTyping: false
+    isAiTyping: false,
+
+    // 실시간 대시보드 캐시 및 데이터 상태
+    lastMarketFetchTime: 0,
+    gemPrices: [],
+    topEngravings: []
   };
 
   // UI 요소 참조
@@ -201,7 +206,11 @@ document.addEventListener('DOMContentLoaded', () => {
     presetTags: document.querySelectorAll('.preset-tag'),
     marketSearchResults: document.getElementById('market-search-results'),
     btnAiAnalyze: document.getElementById('btn-ai-analyze'),
-    aiTerminalOutput: document.getElementById('ai-terminal-output')
+    aiTerminalOutput: document.getElementById('ai-terminal-output'),
+
+    // 신규 금융 대시보드 UI
+    gemDashboardContainer: document.getElementById('gem-dashboard-container'),
+    engravingRankTableBody: document.getElementById('engraving-rank-table-body')
   };
 
   // === 2. SPA 라우터 및 네비게이션 제어 ===
@@ -228,6 +237,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (pageId === 'divider') {
       updateEngravingPricesFromApi();
+    }
+
+    if (pageId === 'market') {
+      updateMarketDashboardData();
     }
 
     if (window.location.hash !== `#/${pageId}`) {
@@ -1060,6 +1073,350 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // === 9. 실시간 시세 검색 및 Gemini AI 리포트 인터랙션 ===
+
+  // 실시간 보석 대시보드 모의 데이터 백업 (API 미연동 또는 연결 오류 시 작동)
+  const mockGems = [
+    { Name: '10레벨 겁화의 보석', CurrentMinPrice: 345000, YesterDayAveragePrice: 348000 },
+    { Name: '10레벨 작열의 보석', CurrentMinPrice: 162000, YesterDayAveragePrice: 165000 },
+    { Name: '9레벨 겁화의 보석', CurrentMinPrice: 115000, YesterDayAveragePrice: 114000 },
+    { Name: '9레벨 작열의 보석', CurrentMinPrice: 54000, YesterDayAveragePrice: 54500 },
+    { Name: '8레벨 겁화의 보석', CurrentMinPrice: 38000, YesterDayAveragePrice: 39000 },
+    { Name: '8레벨 작열의 보석', CurrentMinPrice: 18500, YesterDayAveragePrice: 18000 },
+    { Name: '7레벨 겁화의 보석', CurrentMinPrice: 12500, YesterDayAveragePrice: 12400 },
+    { Name: '7레벨 작열의 보석', CurrentMinPrice: 6200, YesterDayAveragePrice: 6300 }
+  ];
+
+  // 실시간 유물 각인서 대시보드 모의 데이터 백업 (상위 15종)
+  const mockEngravingRank = [
+    { Name: '원한 유물 각인서', CurrentMinPrice: 65000, YesterDayAveragePrice: 62000 },
+    { Name: '아드레날린 유물 각인서', CurrentMinPrice: 58000, YesterDayAveragePrice: 59500 },
+    { Name: '예리한 둔기 유물 각인서', CurrentMinPrice: 42000, YesterDayAveragePrice: 42000 },
+    { Name: '돌격대장 유물 각인서', CurrentMinPrice: 35000, YesterDayAveragePrice: 34000 },
+    { Name: '타격 대장 유물 각인서', CurrentMinPrice: 28000, YesterDayAveragePrice: 29000 },
+    { Name: '기습의 대가 유물 각인서', CurrentMinPrice: 24000, YesterDayAveragePrice: 25000 },
+    { Name: '저주받은 인형 유물 각인서', CurrentMinPrice: 22000, YesterDayAveragePrice: 22000 },
+    { Name: '결투의 대가 유물 각인서', CurrentMinPrice: 15000, YesterDayAveragePrice: 16000 },
+    { Name: '질량 증가 유물 각인서', CurrentMinPrice: 8000, YesterDayAveragePrice: 7800 },
+    { Name: '각성 유물 각인서', CurrentMinPrice: 7000, YesterDayAveragePrice: 7200 },
+    { Name: '상급 소환사 유물 각인서', CurrentMinPrice: 6500, YesterDayAveragePrice: 6000 },
+    { Name: '점화 유물 각인서', CurrentMinPrice: 5800, YesterDayAveragePrice: 6200 },
+    { Name: '처단자 유물 각인서', CurrentMinPrice: 5500, YesterDayAveragePrice: 5300 },
+    { Name: '환류 유물 각인서', CurrentMinPrice: 3200, YesterDayAveragePrice: 3300 },
+    { Name: '절정 유물 각인서', CurrentMinPrice: 2800, YesterDayAveragePrice: 2900 }
+  ];
+
+  // 안전 캐싱(60초) 하에 실시간 데이터 로딩 제어 (API 호출 최소화 적용)
+  async function updateMarketDashboardData() {
+    const now = Date.now();
+    // 60초 캐싱 인터벌 적용: API Rate Limit을 완벽히 방수하기 위함
+    if (state.lastMarketFetchTime && (now - state.lastMarketFetchTime < 60000)) {
+      console.log('[Dashboard] 60초 캐시 유효 상태. 로컬 캐시 렌더링 진행.');
+      renderGemDashboard(state.gemPrices);
+      renderEngravingRankDashboard(state.topEngravings);
+      return;
+    }
+
+    console.log('[Dashboard] 캐시가 만료되었거나 첫 진입입니다. 실시간 데이터 동기화 시작.');
+    
+    // 로딩 상태 표시
+    if (ui.gemDashboardContainer) {
+      ui.gemDashboardContainer.innerHTML = `
+        <div class="dashboard-loading">
+          <i data-lucide="loader" class="animate-spin text-cyan"></i>
+          <span>보석 실시간 시세 수집 중...</span>
+        </div>
+      `;
+    }
+    if (ui.engravingRankTableBody) {
+      ui.engravingRankTableBody.innerHTML = `
+        <tr>
+          <td colspan="4" class="table-loading">
+            <i data-lucide="loader" class="animate-spin text-gold"></i>
+            <span>상위 유물 각인서 랭킹 산출 중...</span>
+          </td>
+        </tr>
+      `;
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    // 비동기로 데이터 동시 수집 시작
+    try {
+      const [gems, engravings] = await Promise.all([
+        updateLiveGemPricesFromApi(),
+        updateTop15EngravingsFromApi()
+      ]);
+
+      state.gemPrices = gems;
+      state.topEngravings = engravings;
+      state.lastMarketFetchTime = Date.now();
+
+      renderGemDashboard(gems);
+      renderEngravingRankDashboard(engravings);
+    } catch (err) {
+      console.error('[Dashboard] 실시간 데이터 로드 중 치명적 오류 발생, 데모 모드로 복구합니다:', err);
+      // 에러 시 데모 모드로 백업
+      state.gemPrices = mockGems;
+      state.topEngravings = mockEngravingRank;
+      state.lastMarketFetchTime = Date.now();
+      
+      renderGemDashboard(mockGems);
+      renderEngravingRankDashboard(mockEngravingRank);
+    }
+  }
+
+  // T4 보석 8종 (겁화/작열 7~10렙) 수집 API 구현 (단 2회 호출 우회 설계)
+  async function updateLiveGemPricesFromApi() {
+    if (!state.apiKey) {
+      // API Key가 없으면 모의 데이터 반환
+      return new Promise(resolve => setTimeout(() => resolve(mockGems), 500));
+    }
+
+    try {
+      // 1) 겁화 보석 리스트 수집 (1회 호출)
+      const fireRes = await fetch('/api/market', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-lostark-api-key': state.apiKey
+        },
+        body: JSON.stringify({
+          Sort: 'CURRENT_MIN_PRICE',
+          CategoryCode: 210000,
+          CharacterClass: '',
+          ItemTier: 4,
+          ItemGrade: '',
+          ItemName: '겁화',
+          PageNo: 1,
+          SortCondition: 'ASC'
+        })
+      });
+
+      // 2) 작열 보석 리스트 수집 (2회 호출)
+      const iceRes = await fetch('/api/market', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-lostark-api-key': state.apiKey
+        },
+        body: JSON.stringify({
+          Sort: 'CURRENT_MIN_PRICE',
+          CategoryCode: 210000,
+          CharacterClass: '',
+          ItemTier: 4,
+          ItemGrade: '',
+          ItemName: '작열',
+          PageNo: 1,
+          SortCondition: 'ASC'
+        })
+      });
+
+      if (!fireRes.ok || !iceRes.ok) {
+        throw new Error('보석 API 호출 실패');
+      }
+
+      const fireData = await fireRes.json();
+      const iceData = await iceRes.json();
+
+      const fireItems = fireData.Items || [];
+      const iceItems = iceData.Items || [];
+
+      // 7~10레벨 필터링 대상 정의
+      const targetLevels = ['7레벨', '8레벨', '9레벨', '10레벨'];
+      const resultGems = [];
+
+      targetLevels.forEach(lvl => {
+        // 겁화 필터링
+        const fItem = fireItems.find(x => x.Name.includes(lvl));
+        if (fItem) {
+          resultGems.push({
+            Name: fItem.Name,
+            CurrentMinPrice: fItem.CurrentMinPrice,
+            YesterDayAveragePrice: fItem.YesterDayAveragePrice
+          });
+        } else {
+          // 누락 시 모의 데이터로 대체
+          const backup = mockGems.find(x => x.Name.includes(lvl) && x.Name.includes('겁화'));
+          resultGems.push(backup);
+        }
+
+        // 작열 필터링
+        const iItem = iceItems.find(x => x.Name.includes(lvl));
+        if (iItem) {
+          resultGems.push({
+            Name: iItem.Name,
+            CurrentMinPrice: iItem.CurrentMinPrice,
+            YesterDayAveragePrice: iItem.YesterDayAveragePrice
+          });
+        } else {
+          const backup = mockGems.find(x => x.Name.includes(lvl) && x.Name.includes('작열'));
+          resultGems.push(backup);
+        }
+      });
+
+      // 10렙 -> 9렙 -> 8렙 -> 7렙 순으로 정렬하기 위해 파싱 정렬
+      resultGems.sort((a, b) => {
+        const getLvl = name => parseInt(name.match(/\d+/)?.[0] || 0);
+        const lvlA = getLvl(a.Name);
+        const lvlB = getLvl(b.Name);
+        if (lvlA !== lvlB) return lvlB - lvlA; // 레벨 내림차순
+        return a.Name.includes('겁화') ? -1 : 1; // 같은 레벨이면 겁화 우선
+      });
+
+      return resultGems;
+    } catch (err) {
+      console.warn('보석 실시간 API 조회 실패로 인해 모의 데이터 복구 적용:', err.message);
+      return mockGems;
+    }
+  }
+
+  // 유물 각인서 상위 15위 수집 API 구현 (단 2회 호출 랭킹 취합)
+  async function updateTop15EngravingsFromApi() {
+    if (!state.apiKey) {
+      return new Promise(resolve => setTimeout(() => resolve(mockEngravingRank), 500));
+    }
+
+    try {
+      // 1페이지 수집 (1회 호출)
+      const page1Res = await fetch('/api/market', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-lostark-api-key': state.apiKey
+        },
+        body: JSON.stringify({
+          Sort: 'CURRENT_MIN_PRICE',
+          CategoryCode: 40000,
+          CharacterClass: '',
+          ItemTier: 4,
+          ItemGrade: '유물',
+          ItemName: '',
+          PageNo: 1,
+          SortCondition: 'DESC' // 최저가 내림차순 정렬
+        })
+      });
+
+      // 2페이지 수집 (2회 호출)
+      const page2Res = await fetch('/api/market', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-lostark-api-key': state.apiKey
+        },
+        body: JSON.stringify({
+          Sort: 'CURRENT_MIN_PRICE',
+          CategoryCode: 40000,
+          CharacterClass: '',
+          ItemTier: 4,
+          ItemGrade: '유물',
+          ItemName: '',
+          PageNo: 2,
+          SortCondition: 'DESC'
+        })
+      });
+
+      if (!page1Res.ok || !page2Res.ok) {
+        throw new Error('각인서 API 호출 실패');
+      }
+
+      const p1Data = await page1Res.json();
+      const p2Data = await page2Res.json();
+
+      const items = [...(p1Data.Items || []), ...(p2Data.Items || [])];
+      
+      if (items.length === 0) {
+        return mockEngravingRank;
+      }
+
+      // 가치 기준 내림차순 정렬 재검증 및 중복 방지
+      const uniqueItems = [];
+      const seen = new Set();
+      items.forEach(item => {
+        if (!seen.has(item.Name)) {
+          seen.add(item.Name);
+          uniqueItems.push({
+            Name: item.Name.replace(' 유물 각인서', '').replace('각인서', '').trim(),
+            CurrentMinPrice: item.CurrentMinPrice,
+            YesterDayAveragePrice: item.YesterDayAveragePrice
+          });
+        }
+      });
+
+      uniqueItems.sort((a, b) => b.CurrentMinPrice - a.CurrentMinPrice);
+
+      // 상위 15개 슬라이싱
+      return uniqueItems.slice(0, 15);
+    } catch (err) {
+      console.warn('각인서 실시간 API 조회 실패로 인해 모의 데이터 복구 적용:', err.message);
+      return mockEngravingRank;
+    }
+  }
+
+  // 보석 대시보드 렌더링 함수
+  function renderGemDashboard(gems) {
+    if (!ui.gemDashboardContainer) return;
+    ui.gemDashboardContainer.innerHTML = '';
+
+    gems.forEach(gem => {
+      const isFire = gem.Name.includes('겁화');
+      const gemClass = isFire ? 'gem-type-fire' : 'gem-type-ice';
+      const typeIcon = isFire ? 'flame' : 'snowflake';
+      const gemNameShort = gem.Name.replace('의 보석', '').trim();
+
+      const priceDiff = gem.CurrentMinPrice - gem.YesterDayAveragePrice;
+      const diffClass = priceDiff > 0 ? 'text-cyan' : (priceDiff < 0 ? 'text-danger' : 'text-dim');
+      const diffArrow = priceDiff > 0 ? '▲' : (priceDiff < 0 ? '▼' : '-');
+
+      const card = document.createElement('div');
+      card.className = `gem-mini-card ${gemClass}`;
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size: 10px; font-weight:800; opacity:0.8; letter-spacing:0.5px; color:var(--text-muted);">T4 보석</span>
+          <i data-lucide="${typeIcon}" class="gem-icon-label" style="width:16px; height:16px;"></i>
+        </div>
+        <h4 style="text-align:left; margin-bottom:8px;">${gemNameShort}</h4>
+        <div class="gem-price-val" style="text-align:left;">
+          ${gem.CurrentMinPrice.toLocaleString()}<span>G</span>
+        </div>
+        <div class="gem-change-val ${diffClass}" style="text-align:left;">
+          ${diffArrow} ${Math.abs(priceDiff).toLocaleString()}G
+        </div>
+      `;
+      ui.gemDashboardContainer.appendChild(card);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  // 유물 각인서 상위 15 랭킹 대시보드 렌더링 함수
+  function renderEngravingRankDashboard(engravings) {
+    if (!ui.engravingRankTableBody) return;
+    ui.engravingRankTableBody.innerHTML = '';
+
+    engravings.forEach((item, index) => {
+      const priceDiff = item.CurrentMinPrice - item.YesterDayAveragePrice;
+      const diffClass = priceDiff > 0 ? 'trend-up' : (priceDiff < 0 ? 'trend-down' : 'trend-flat');
+      const diffArrow = priceDiff > 0 ? '▲' : (priceDiff < 0 ? '▼' : '-');
+      
+      // 등락률 연산
+      const percent = item.YesterDayAveragePrice > 0 
+        ? ((priceDiff / item.YesterDayAveragePrice) * 100).toFixed(1)
+        : '0.0';
+      const percentSign = priceDiff > 0 ? '+' : '';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="col-rank">${index + 1}</td>
+        <td class="col-name">${item.Name}</td>
+        <td class="col-price text-right">${item.CurrentMinPrice.toLocaleString()} G</td>
+        <td class="col-diff text-right ${diffClass}">
+          ${diffArrow} ${percentSign}${percent}%
+        </td>
+      `;
+      ui.engravingRankTableBody.appendChild(tr);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+  }
 
   // 모의 거래소 시세 데이터베이스 (API 연동 실패 혹은 키가 없는 유저의 백업)
   const mockMarketDb = [
