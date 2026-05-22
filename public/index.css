@@ -561,6 +561,11 @@ button {
   align-items: start;
 }
 
+.layout-full {
+  width: 100%;
+  display: block;
+}
+
 .input-panel {
   background: var(--bg-panel);
   border: 1px solid var(--border-color);

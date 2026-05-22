@@ -1,0 +1,688 @@
+{
+  "2026-05-14": {
+    "gems": [
+      {
+        "Name": "10레벨 겁화의 보석",
+        "CurrentMinPrice": 238114
+      },
+      {
+        "Name": "10레벨 작열의 보석",
+        "CurrentMinPrice": 158742
+      },
+      {
+        "Name": "9레벨 겁화의 보석",
+        "CurrentMinPrice": 79371
+      },
+      {
+        "Name": "9레벨 작열의 보석",
+        "CurrentMinPrice": 52583
+      },
+      {
+        "Name": "8레벨 겁화의 보석",
+        "CurrentMinPrice": 25796
+      },
+      {
+        "Name": "8레벨 작열의 보석",
+        "CurrentMinPrice": 17362
+      },
+      {
+        "Name": "7레벨 겁화의 보석",
+        "CurrentMinPrice": 8731
+      },
+      {
+        "Name": "7레벨 작열의 보석",
+        "CurrentMinPrice": 5754
+      }
+    ],
+    "engravings": [
+      {
+        "Name": "아드레날린",
+        "CurrentMinPrice": 4510
+      },
+      {
+        "Name": "예리한 둔기",
+        "CurrentMinPrice": 3507
+      },
+      {
+        "Name": "돌격대장",
+        "CurrentMinPrice": 2806
+      },
+      {
+        "Name": "타격 대장",
+        "CurrentMinPrice": 2205
+      },
+      {
+        "Name": "기습의 대가",
+        "CurrentMinPrice": 1804
+      },
+      {
+        "Name": "저주받은 인형",
+        "CurrentMinPrice": 1603
+      },
+      {
+        "Name": "결투의 대가",
+        "CurrentMinPrice": 1503
+      },
+      {
+        "Name": "질량 증가",
+        "CurrentMinPrice": 802
+      }
+    ]
+  },
+  "2026-05-15": {
+    "gems": [
+      {
+        "Name": "10레벨 겁화의 보석",
+        "CurrentMinPrice": 234339
+      },
+      {
+        "Name": "10레벨 작열의 보석",
+        "CurrentMinPrice": 156226
+      },
+      {
+        "Name": "9레벨 겁화의 보석",
+        "CurrentMinPrice": 78113
+      },
+      {
+        "Name": "9레벨 작열의 보석",
+        "CurrentMinPrice": 51750
+      },
+      {
+        "Name": "8레벨 겁화의 보석",
+        "CurrentMinPrice": 25387
+      },
+      {
+        "Name": "8레벨 작열의 보석",
+        "CurrentMinPrice": 17087
+      },
+      {
+        "Name": "7레벨 겁화의 보석",
+        "CurrentMinPrice": 8592
+      },
+      {
+        "Name": "7레벨 작열의 보석",
+        "CurrentMinPrice": 5663
+      }
+    ],
+    "engravings": [
+      {
+        "Name": "아드레날린",
+        "CurrentMinPrice": 4439
+      },
+      {
+        "Name": "예리한 둔기",
+        "CurrentMinPrice": 3452
+      },
+      {
+        "Name": "돌격대장",
+        "CurrentMinPrice": 2762
+      },
+      {
+        "Name": "타격 대장",
+        "CurrentMinPrice": 2170
+      },
+      {
+        "Name": "기습의 대가",
+        "CurrentMinPrice": 1776
+      },
+      {
+        "Name": "저주받은 인형",
+        "CurrentMinPrice": 1578
+      },
+      {
+        "Name": "결투의 대가",
+        "CurrentMinPrice": 1480
+      },
+      {
+        "Name": "질량 증가",
+        "CurrentMinPrice": 789
+      }
+    ]
+  },
+  "2026-05-16": {
+    "gems": [
+      {
+        "Name": "10레벨 겁화의 보석",
+        "CurrentMinPrice": 231797
+      },
+      {
+        "Name": "10레벨 작열의 보석",
+        "CurrentMinPrice": 154531
+      },
+      {
+        "Name": "9레벨 겁화의 보석",
+        "CurrentMinPrice": 77266
+      },
+      {
+        "Name": "9레벨 작열의 보석",
+        "CurrentMinPrice": 51189
+      },
+      {
+        "Name": "8레벨 겁화의 보석",
+        "CurrentMinPrice": 25111
+      },
+      {
+        "Name": "8레벨 작열의 보석",
+        "CurrentMinPrice": 16902
+      },
+      {
+        "Name": "7레벨 겁화의 보석",
+        "CurrentMinPrice": 8499
+      },
+      {
+        "Name": "7레벨 작열의 보석",
+        "CurrentMinPrice": 5602
+      }
+    ],
+    "engravings": [
+      {
+        "Name": "아드레날린",
+        "CurrentMinPrice": 4391
+      },
+      {
+        "Name": "예리한 둔기",
+        "CurrentMinPrice": 3415
+      },
+      {
+        "Name": "돌격대장",
+        "CurrentMinPrice": 2732
+      },
+      {
+        "Name": "타격 대장",
+        "CurrentMinPrice": 2147
+      },
+      {
+        "Name": "기습의 대가",
+        "CurrentMinPrice": 1756
+      },
+      {
+        "Name": "저주받은 인형",
+        "CurrentMinPrice": 1561
+      },
+      {
+        "Name": "결투의 대가",
+        "CurrentMinPrice": 1464
+      },
+      {
+        "Name": "질량 증가",
+        "CurrentMinPrice": 781
+      }
+    ]
+  },
+  "2026-05-17": {
+    "gems": [
+      {
+        "Name": "10레벨 겁화의 보석",
+        "CurrentMinPrice": 233487
+      },
+      {
+        "Name": "10레벨 작열의 보석",
+        "CurrentMinPrice": 155658
+      },
+      {
+        "Name": "9레벨 겁화의 보석",
+        "CurrentMinPrice": 77829
+      },
+      {
+        "Name": "9레벨 작열의 보석",
+        "CurrentMinPrice": 51562
+      },
+      {
+        "Name": "8레벨 겁화의 보석",
+        "CurrentMinPrice": 25294
+      },
+      {
+        "Name": "8레벨 작열의 보석",
+        "CurrentMinPrice": 17025
+      },
+      {
+        "Name": "7레벨 겁화의 보석",
+        "CurrentMinPrice": 8561
+      },
+      {
+        "Name": "7레벨 작열의 보석",
+        "CurrentMinPrice": 5643
+      }
+    ],
+    "engravings": [
+      {
+        "Name": "아드레날린",
+        "CurrentMinPrice": 4423
+      },
+      {
+        "Name": "예리한 둔기",
+        "CurrentMinPrice": 3440
+      },
+      {
+        "Name": "돌격대장",
+        "CurrentMinPrice": 2752
+      },
+      {
+        "Name": "타격 대장",
+        "CurrentMinPrice": 2162
+      },
+      {
+        "Name": "기습의 대가",
+        "CurrentMinPrice": 1769
+      },
+      {
+        "Name": "저주받은 인형",
+        "CurrentMinPrice": 1573
+      },
+      {
+        "Name": "결투의 대가",
+        "CurrentMinPrice": 1474
+      },
+      {
+        "Name": "질량 증가",
+        "CurrentMinPrice": 786
+      }
+    ]
+  },
+  "2026-05-18": {
+    "gems": [
+      {
+        "Name": "10레벨 겁화의 보석",
+        "CurrentMinPrice": 238517
+      },
+      {
+        "Name": "10레벨 작열의 보석",
+        "CurrentMinPrice": 159012
+      },
+      {
+        "Name": "9레벨 겁화의 보석",
+        "CurrentMinPrice": 79506
+      },
+      {
+        "Name": "9레벨 작열의 보석",
+        "CurrentMinPrice": 52673
+      },
+      {
+        "Name": "8레벨 겁화의 보석",
+        "CurrentMinPrice": 25839
+      },
+      {
+        "Name": "8레벨 작열의 보석",
+        "CurrentMinPrice": 17392
+      },
+      {
+        "Name": "7레벨 겁화의 보석",
+        "CurrentMinPrice": 8746
+      },
+      {
+        "Name": "7레벨 작열의 보석",
+        "CurrentMinPrice": 5764
+      }
+    ],
+    "engravings": [
+      {
+        "Name": "아드레날린",
+        "CurrentMinPrice": 4517
+      },
+      {
+        "Name": "예리한 둔기",
+        "CurrentMinPrice": 3513
+      },
+      {
+        "Name": "돌격대장",
+        "CurrentMinPrice": 2811
+      },
+      {
+        "Name": "타격 대장",
+        "CurrentMinPrice": 2208
+      },
+      {
+        "Name": "기습의 대가",
+        "CurrentMinPrice": 1807
+      },
+      {
+        "Name": "저주받은 인형",
+        "CurrentMinPrice": 1606
+      },
+      {
+        "Name": "결투의 대가",
+        "CurrentMinPrice": 1506
+      },
+      {
+        "Name": "질량 증가",
+        "CurrentMinPrice": 803
+      }
+    ]
+  },
+  "2026-05-19": {
+    "gems": [
+      {
+        "Name": "10레벨 겁화의 보석",
+        "CurrentMinPrice": 242925
+      },
+      {
+        "Name": "10레벨 작열의 보석",
+        "CurrentMinPrice": 161950
+      },
+      {
+        "Name": "9레벨 겁화의 보석",
+        "CurrentMinPrice": 80975
+      },
+      {
+        "Name": "9레벨 작열의 보석",
+        "CurrentMinPrice": 53646
+      },
+      {
+        "Name": "8레벨 겁화의 보석",
+        "CurrentMinPrice": 26317
+      },
+      {
+        "Name": "8레벨 작열의 보석",
+        "CurrentMinPrice": 17713
+      },
+      {
+        "Name": "7레벨 겁화의 보석",
+        "CurrentMinPrice": 8907
+      },
+      {
+        "Name": "7레벨 작열의 보석",
+        "CurrentMinPrice": 5871
+      }
+    ],
+    "engravings": [
+      {
+        "Name": "아드레날린",
+        "CurrentMinPrice": 4600
+      },
+      {
+        "Name": "예리한 둔기",
+        "CurrentMinPrice": 3578
+      },
+      {
+        "Name": "돌격대장",
+        "CurrentMinPrice": 2862
+      },
+      {
+        "Name": "타격 대장",
+        "CurrentMinPrice": 2249
+      },
+      {
+        "Name": "기습의 대가",
+        "CurrentMinPrice": 1840
+      },
+      {
+        "Name": "저주받은 인형",
+        "CurrentMinPrice": 1635
+      },
+      {
+        "Name": "결투의 대가",
+        "CurrentMinPrice": 1533
+      },
+      {
+        "Name": "질량 증가",
+        "CurrentMinPrice": 818
+      }
+    ]
+  },
+  "2026-05-20": {
+    "gems": [
+      {
+        "Name": "10레벨 겁화의 보석",
+        "CurrentMinPrice": 243319
+      },
+      {
+        "Name": "10레벨 작열의 보석",
+        "CurrentMinPrice": 162213
+      },
+      {
+        "Name": "9레벨 겁화의 보석",
+        "CurrentMinPrice": 81106
+      },
+      {
+        "Name": "9레벨 작열의 보석",
+        "CurrentMinPrice": 53733
+      },
+      {
+        "Name": "8레벨 겁화의 보석",
+        "CurrentMinPrice": 26360
+      },
+      {
+        "Name": "8레벨 작열의 보석",
+        "CurrentMinPrice": 17742
+      },
+      {
+        "Name": "7레벨 겁화의 보석",
+        "CurrentMinPrice": 8922
+      },
+      {
+        "Name": "7레벨 작열의 보석",
+        "CurrentMinPrice": 5880
+      }
+    ],
+    "engravings": [
+      {
+        "Name": "아드레날린",
+        "CurrentMinPrice": 4607
+      },
+      {
+        "Name": "예리한 둔기",
+        "CurrentMinPrice": 3583
+      },
+      {
+        "Name": "돌격대장",
+        "CurrentMinPrice": 2867
+      },
+      {
+        "Name": "타격 대장",
+        "CurrentMinPrice": 2252
+      },
+      {
+        "Name": "기습의 대가",
+        "CurrentMinPrice": 1843
+      },
+      {
+        "Name": "저주받은 인형",
+        "CurrentMinPrice": 1638
+      },
+      {
+        "Name": "결투의 대가",
+        "CurrentMinPrice": 1536
+      },
+      {
+        "Name": "질량 증가",
+        "CurrentMinPrice": 819
+      }
+    ]
+  },
+  "2026-05-21": {
+    "gems": [
+      {
+        "Name": "10레벨 겁화의 보석",
+        "CurrentMinPrice": 3400000
+      },
+      {
+        "Name": "10레벨 작열의 보석",
+        "CurrentMinPrice": 3350000
+      },
+      {
+        "Name": "9레벨 겁화의 보석",
+        "CurrentMinPrice": 1165000
+      },
+      {
+        "Name": "9레벨 작열의 보석",
+        "CurrentMinPrice": 1169000
+      },
+      {
+        "Name": "8레벨 겁화의 보석",
+        "CurrentMinPrice": 384499
+      },
+      {
+        "Name": "8레벨 작열의 보석",
+        "CurrentMinPrice": 384500
+      },
+      {
+        "Name": "7레벨 겁화의 보석",
+        "CurrentMinPrice": 124000
+      },
+      {
+        "Name": "7레벨 작열의 보석",
+        "CurrentMinPrice": 126000
+      }
+    ],
+    "engravings": [
+      {
+        "Name": "유물 원한",
+        "CurrentMinPrice": 187700
+      },
+      {
+        "Name": "유물 돌격대장",
+        "CurrentMinPrice": 183900
+      },
+      {
+        "Name": "유물 예리한 둔기",
+        "CurrentMinPrice": 161700
+      },
+      {
+        "Name": "유물 아드레날린",
+        "CurrentMinPrice": 151425
+      },
+      {
+        "Name": "유물 질량 증가",
+        "CurrentMinPrice": 99687
+      },
+      {
+        "Name": "유물 기습의 대가",
+        "CurrentMinPrice": 59488
+      },
+      {
+        "Name": "유물 저주받은 인형",
+        "CurrentMinPrice": 43000
+      },
+      {
+        "Name": "유물 각성",
+        "CurrentMinPrice": 39990
+      },
+      {
+        "Name": "유물 타격의 대가",
+        "CurrentMinPrice": 35285
+      },
+      {
+        "Name": "유물 전문의",
+        "CurrentMinPrice": 29887
+      },
+      {
+        "Name": "유물 슈퍼 차지",
+        "CurrentMinPrice": 24400
+      },
+      {
+        "Name": "유물 결투의 대가",
+        "CurrentMinPrice": 21500
+      },
+      {
+        "Name": "유물 구슬동자",
+        "CurrentMinPrice": 1730
+      },
+      {
+        "Name": "유물 마나의 흐름",
+        "CurrentMinPrice": 1700
+      },
+      {
+        "Name": "유물 속전속결",
+        "CurrentMinPrice": 1177
+      }
+    ]
+  },
+  "2026-05-22": {
+    "gems": [
+      {
+        "Name": "10레벨 겁화의 보석",
+        "CurrentMinPrice": 3399999
+      },
+      {
+        "Name": "10레벨 작열의 보석",
+        "CurrentMinPrice": 3990000
+      },
+      {
+        "Name": "9레벨 겁화의 보석",
+        "CurrentMinPrice": 1160000
+      },
+      {
+        "Name": "9레벨 작열의 보석",
+        "CurrentMinPrice": 1160000
+      },
+      {
+        "Name": "8레벨 겁화의 보석",
+        "CurrentMinPrice": 386500
+      },
+      {
+        "Name": "8레벨 작열의 보석",
+        "CurrentMinPrice": 386500
+      },
+      {
+        "Name": "7레벨 겁화의 보석",
+        "CurrentMinPrice": 128799
+      },
+      {
+        "Name": "7레벨 작열의 보석",
+        "CurrentMinPrice": 125000
+      }
+    ],
+    "engravings": [
+      {
+        "Name": "유물 원한",
+        "CurrentMinPrice": 182498
+      },
+      {
+        "Name": "유물 돌격대장",
+        "CurrentMinPrice": 179999
+      },
+      {
+        "Name": "유물 예리한 둔기",
+        "CurrentMinPrice": 159998
+      },
+      {
+        "Name": "유물 아드레날린",
+        "CurrentMinPrice": 150800
+      },
+      {
+        "Name": "유물 질량 증가",
+        "CurrentMinPrice": 101399
+      },
+      {
+        "Name": "유물 기습의 대가",
+        "CurrentMinPrice": 59995
+      },
+      {
+        "Name": "유물 저주받은 인형",
+        "CurrentMinPrice": 43600
+      },
+      {
+        "Name": "유물 각성",
+        "CurrentMinPrice": 39790
+      },
+      {
+        "Name": "유물 타격의 대가",
+        "CurrentMinPrice": 34800
+      },
+      {
+        "Name": "유물 전문의",
+        "CurrentMinPrice": 28797
+      },
+      {
+        "Name": "유물 슈퍼 차지",
+        "CurrentMinPrice": 24000
+      },
+      {
+        "Name": "유물 결투의 대가",
+        "CurrentMinPrice": 22000
+      },
+      {
+        "Name": "유물 구슬동자",
+        "CurrentMinPrice": 1998
+      },
+      {
+        "Name": "유물 마나의 흐름",
+        "CurrentMinPrice": 1833
+      },
+      {
+        "Name": "유물 속전속결",
+        "CurrentMinPrice": 1300
+      }
+    ]
+  }
+}

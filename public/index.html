@@ -188,10 +188,20 @@
 
           <div class="input-section">
             <h3>생활 재료 가격 입력 (100개 기준 시세)</h3>
+            <div id="crafting-price-status" style="display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-muted); margin-bottom:10px;">
+              <i data-lucide="refresh-cw" style="width:12px;height:12px;color:var(--accent-cyan);"></i>
+              <span id="crafting-price-status-text">API Key 등록 시 시세 자동 조회</span>
+              <button id="btn-refresh-craft-prices" style="margin-left:auto; background:hsla(195,100%,50%,0.1); border:1px solid var(--accent-cyan-glow); color:var(--accent-cyan); border-radius:6px; padding:3px 9px; font-size:10px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                <i data-lucide="refresh-cw" style="width:10px;height:10px;"></i>새로고침
+              </button>
+            </div>
             <div class="skill-material-tabs">
               <button class="skill-tab active" data-skill="archaeology">고고학</button>
               <button class="skill-tab" data-skill="fishing">낚시</button>
               <button class="skill-tab" data-skill="hunting">수렵</button>
+              <button class="skill-tab" data-skill="logging">벌목</button>
+              <button class="skill-tab" data-skill="mining">채광</button>
+              <button class="skill-tab" data-skill="foraging">채집</button>
             </div>
 
             <div class="material-inputs" id="mat-inputs-container">
@@ -568,34 +578,8 @@
         </div>
       </div>
 
-      <!-- 하단: 검색창 독립 및 AI 분석 (2열 구조) -->
-      <div class="layout-split">
-        <!-- 가격 검색 및 목록 (독립 검색 기능) -->
-        <div class="input-panel">
-          <div class="input-section">
-            <h3>개별 아이템 시세 검색</h3>
-            <div class="search-box">
-              <input type="text" id="input-market-search" placeholder="아이템 이름 입력 (예: 겁화, 작열, 원한)">
-              <button class="search-btn" id="btn-market-search"><i data-lucide="search"></i>검색</button>
-            </div>
-
-            <div class="search-presets">
-              <button class="preset-tag" data-query="10레벨 겁화의 보석">10렙 겁화</button>
-              <button class="preset-tag" data-query="10레벨 작열의 보석">10렙 작열</button>
-              <button class="preset-tag" data-query="9레벨 겁화의 보석">9렙 겁화</button>
-              <button class="preset-tag" data-query="전설 각인서">전설 각인서</button>
-              <button class="preset-tag" data-query="아비도스 유물">아비도스 유물</button>
-            </div>
-          </div>
-
-          <div class="input-section">
-            <h3>검색 결과</h3>
-            <div class="market-results-list" id="market-search-results">
-              <div class="no-results">검색어 입력 또는 프리셋 태그를 클릭하여 실시간 가격 조회를 진행하세요.</div>
-            </div>
-          </div>
-        </div>
-
+      <!-- 하단: AI 분석 피드 터미널 (전체 너비 개편) -->
+      <div class="layout-full">
         <!-- AI 터미널 리포트 창 -->
         <div class="result-panel">
           <div class="ai-report-container">

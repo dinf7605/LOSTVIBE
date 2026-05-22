@@ -22,14 +22,20 @@ document.addEventListener('DOMContentLoaded', () => {
     materialPrices: {
       archaeology: { abidos: 65, oreha: 18, rare: 10, ancient: 0.15 },
       fishing: { abidos: 60, oreha: 16, rare: 9, ancient: 0.12 },
-      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 0.11 }
+      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 0.11 },
+      logging: { abidos: 60, oreha: 12, rare: 5, ancient: 0.12 },
+      mining: { abidos: 55, oreha: 18, rare: 4, ancient: 0.17 },
+      foraging: { abidos: 52, oreha: 14, rare: 3.5, ancient: 0.15 }
     },
 
     // 기본 시세 (리셋용)
     defaultPrices: {
       archaeology: { abidos: 65, oreha: 18, rare: 10, ancient: 0.15 },
       fishing: { abidos: 60, oreha: 16, rare: 9, ancient: 0.12 },
-      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 0.11 }
+      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 0.11 },
+      logging: { abidos: 60, oreha: 12, rare: 5, ancient: 0.12 },
+      mining: { abidos: 55, oreha: 18, rare: 4, ancient: 0.17 },
+      foraging: { abidos: 52, oreha: 14, rare: 3.5, ancient: 0.15 }
     },
 
     // 레시피 정보 (1회 제작=30개 기준 소모량)
@@ -133,6 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
     skillTabs: document.querySelectorAll('.skill-tab'),
     matInputsContainer: document.getElementById('mat-inputs-container'),
     btnResetPrices: document.getElementById('btn-reset-prices'),
+    btnRefreshCraftPrices: document.getElementById('btn-refresh-craft-prices'),
+    craftingPriceStatusText: document.getElementById('crafting-price-status-text'),
 
     // 계산기 결과창
     profitBadge: document.getElementById('txt-profit-badge'),
@@ -200,11 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
     txtAuctionTaxVal: document.getElementById('txt-auction-tax-val'),
     txtAuctionDividend: document.getElementById('txt-auction-dividend'),
 
-    // 시세 검색 & AI 분석 UI
-    inputMarketSearch: document.getElementById('input-market-search'),
-    btnMarketSearch: document.getElementById('btn-market-search'),
-    presetTags: document.querySelectorAll('.preset-tag'),
-    marketSearchResults: document.getElementById('market-search-results'),
+    // AI 분석 UI
     btnAiAnalyze: document.getElementById('btn-ai-analyze'),
     aiTerminalOutput: document.getElementById('ai-terminal-output'),
 
@@ -236,7 +240,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (pageId === 'divider') {
-      updateEngravingPricesFromApi();
+      const now = Date.now();
+      // 30초 쿨타임을 부여하여 불필요한 연속 호출 및 렉을 방지합니다.
+      if (!state.lastDividerFetchTime || (now - state.lastDividerFetchTime > 30000)) {
+        state.lastDividerFetchTime = now;
+        if (state.apiKey) {
+          updateEngravingPricesFromApi();
+        } else {
+          updateEngravingPricesFromServerCache();
+        }
+      }
     }
 
     if (pageId === 'market') {
@@ -522,14 +535,183 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 5. 아비도스 제작 효율 계산기 & 영지 타이머 ===
 
+  // 아비도스 재료 시세 마지막 갱신 시각 (5분 쿨타임으로 Rate Limit 방어)
+  let lastCraftingFetchTime = 0;
+
+  // 재료별 거래소 검색 ItemName 매핑 (거래소 실제 등록 명칭 기준)
+  const materialSearchMap = {
+    archaeology: [
+      { key: 'abidos', name: '아비도스 유물' },
+      { key: 'oreha', name: '오레하 유물' },
+      { key: 'rare', name: '희귀한 유물' },
+      { key: 'ancient', name: '고대 유물' }
+    ],
+    fishing: [
+      { key: 'abidos', name: '아비도스 태양 잉어' },
+      { key: 'oreha', name: '오레하 태양 잉어' },
+      { key: 'rare', name: '붉은 살 생선' },
+      { key: 'ancient', name: '생선' }
+    ],
+    hunting: [
+      { key: 'abidos', name: '아비도스 두툼한 생고기' },
+      { key: 'oreha', name: '오레하 두툼한 생고기' },
+      { key: 'rare', name: '두툼한 생고기' },
+      { key: 'ancient', name: '다듬은 생고기' }
+    ],
+    logging: [
+      { key: 'abidos', name: '아비도스 목재' },
+      { key: 'oreha', name: '튼튼한 목재' },
+      { key: 'rare', name: '부드러운 목재' },
+      { key: 'ancient', name: '목재' }
+    ],
+    mining: [
+      { key: 'abidos', name: '아비도스 철광석' },
+      { key: 'oreha', name: '단단한 철광석' },
+      { key: 'rare', name: '묵직한 철광석' },
+      { key: 'ancient', name: '철광석' }
+    ],
+    foraging: [
+      { key: 'abidos', name: '아비도스 들꽃' },
+      { key: 'oreha', name: '화사한 들꽃' },
+      { key: 'rare', name: '수줍은 들꽃' },
+      { key: 'ancient', name: '들꽃' }
+    ]
+  };
+
+  // API를 통해 현재 선택된 스킬의 재료 시세를 일괄 조회 (하이브리드: 개인 API 직접조회 + 서버 캐시 폴백)
+  async function fetchCraftingMaterialPrices() {
+    // 상태 배너 업데이트: 조회 중
+    if (ui.craftingPriceStatusText) {
+      ui.craftingPriceStatusText.textContent = '시세 조회 중...';
+      ui.craftingPriceStatusText.style.color = 'var(--accent-cyan)';
+    }
+
+    // 1) 개인 API Key가 있는 경우: 직접 로스트아크 OpenAPI로 빠르게 조회
+    if (state.apiKey) {
+      const now = Date.now();
+      // 60초 쿨타임 - 개인 키이므로 비교적 빠르게 허용하되 연속 과호출 방지
+      if (now - lastCraftingFetchTime < 60000) {
+        console.log('[아비도스] 60초 쿨타임 중 - 캐시된 시세 사용');
+        if (ui.craftingPriceStatusText) {
+          ui.craftingPriceStatusText.textContent = '시세 캐시 유효 (60초 내)';
+          ui.craftingPriceStatusText.style.color = 'var(--text-muted)';
+        }
+        return;
+      }
+
+      console.log('[아비도스] 개인 API Key 감지 → 직접 실시간 조회 시작...');
+
+      const targets = materialSearchMap[state.selectedSkill];
+      let successCount = 0;
+
+      for (const target of targets) {
+        try {
+          const response = await fetch('/api/market', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-lostark-api-key': state.apiKey
+            },
+            body: JSON.stringify({
+              Sort: 'CURRENT_MIN_PRICE',
+              CategoryCode: 90000,
+              CharacterClass: '',
+              ItemGrade: '',
+              ItemName: target.name,
+              PageNo: 1,
+              SortCondition: 'ASC'
+            })
+          });
+
+          if (!response.ok) {
+            console.warn(`[아비도스] ${target.name} 조회 실패 (${response.status})`);
+            continue;
+          }
+
+          const data = await response.json();
+          const items = data.Items || [];
+
+          // 조회된 아이템 중 이름이 정확히 일치하는 것 우선, 없으면 첫 번째 사용
+          const matched = items.find(i => i.Name === target.name) || items[0];
+
+          if (matched && matched.CurrentMinPrice > 0) {
+            // CurrentMinPrice는 1개 기준 → 100개 기준으로 환산
+            state.materialPrices[state.selectedSkill][target.key] = matched.CurrentMinPrice * 100;
+            successCount++;
+            console.log(`[아비도스] ${target.name}: ${(matched.CurrentMinPrice * 100).toLocaleString()} G (100개)`);
+          }
+
+          // 연속 호출 간격 150ms 확보 (Rate Limit 안전 방어)
+          await new Promise(resolve => setTimeout(resolve, 150));
+
+        } catch (err) {
+          console.warn(`[아비도스] ${target.name} 조회 오류:`, err.message);
+        }
+      }
+
+      if (successCount > 0) {
+        lastCraftingFetchTime = Date.now();
+        renderMaterialInputs();
+        calculateCraftingEfficiency();
+        const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        if (ui.craftingPriceStatusText) {
+          ui.craftingPriceStatusText.textContent = `실시간 시세 반영 완료 (${timeStr})`;
+          ui.craftingPriceStatusText.style.color = 'var(--success-green)';
+        }
+        console.log(`[아비도스] 개인 API 직접 조회 완료 (${successCount}건 반영)`);
+        return;
+      }
+    }
+
+    // 2) 개인 API Key 미등록 또는 직접 조회 실패 시: 서버 캐시 API에서 가져오기
+    console.log('[아비도스] 서버 캐시 API에서 생활재료 시세 불러오기...');
+    try {
+      const cacheRes = await fetch('/api/market/live-dashboard');
+      if (cacheRes.ok) {
+        const cacheData = await cacheRes.json();
+        if (cacheData.craftingMaterials && cacheData.craftingMaterials[state.selectedSkill]) {
+          const cached = cacheData.craftingMaterials[state.selectedSkill];
+          // 서버 캐시는 1개 기준이므로 100개 기준으로 환산
+          ['abidos', 'oreha', 'rare', 'ancient'].forEach(key => {
+            if (cached[key] && cached[key] > 0) {
+              state.materialPrices[state.selectedSkill][key] = cached[key] * 100;
+            }
+          });
+          renderMaterialInputs();
+          calculateCraftingEfficiency();
+          const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+          if (ui.craftingPriceStatusText) {
+            ui.craftingPriceStatusText.textContent = `서버 캐시 시세 반영 (${timeStr})`;
+            ui.craftingPriceStatusText.style.color = 'var(--accent-gold)';
+          }
+          console.log('[아비도스] 서버 캐시 시세 반영 완료.');
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('[아비도스] 서버 캐시 조회 실패:', err.message);
+    }
+
+    // 3) 모든 조회 실패 시 기본값 유지 안내
+    if (ui.craftingPriceStatusText) {
+      ui.craftingPriceStatusText.textContent = 'API 미연동 - 기본값 사용 중';
+      ui.craftingPriceStatusText.style.color = 'var(--text-dim)';
+    }
+    console.log('[아비도스] 시세 조회 불가 - 기본값 유지');
+  }
+
+
   function renderMaterialInputs() {
     const currentPrices = state.materialPrices[state.selectedSkill];
     ui.matInputsContainer.innerHTML = '';
 
     const labelMap = {
       archaeology: { abidos: '아비도스 유물', oreha: '오레하 유물', rare: '희귀한 유물', ancient: '고대 유물' },
-      fishing: { abidos: '아비도스 대검', oreha: '오레하 낚시 부산물', rare: '두툼한 생선', ancient: '자연산 생선' },
-      hunting: { abidos: '아비도스 대검', oreha: '오레하 수렵 부산물', rare: '다듬은 고기', ancient: '생고기' }
+      fishing: { abidos: '아비도스 태양 잉어', oreha: '오레하 태양 잉어', rare: '붉은 살 생선', ancient: '생선' },
+      hunting: { abidos: '아비도스 두툼한 생고기', oreha: '오레하 두툼한 생고기', rare: '두툼한 생고기', ancient: '다듬은 생고기' },
+      logging: { abidos: '아비도스 목재', oreha: '튼튼한 목재', rare: '부드러운 목재', ancient: '목재' },
+      mining: { abidos: '아비도스 철광석', oreha: '단단한 철광석', rare: '묵직한 철광석', ancient: '철광석' },
+      foraging: { abidos: '아비도스 들꽃', oreha: '화사한 들꽃', rare: '수줍은 들꽃', ancient: '들꽃' }
     };
 
     const keys = ['abidos', 'oreha', 'rare', 'ancient'];
@@ -585,7 +767,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const netProfitStr = (netProfit >= 0 ? '+' : '') + netProfit.toFixed(1);
     ui.netProfit.textContent = netProfitStr;
 
-    const skillLabel = state.selectedSkill === 'archaeology' ? '고고학' : (state.selectedSkill === 'fishing' ? '낚시' : '수렵');
+    const skillLabelMap = {
+      archaeology: '고고학',
+      fishing: '낚시',
+      hunting: '수렵',
+      logging: '벌목',
+      mining: '채광',
+      foraging: '채집'
+    };
+    const skillLabel = skillLabelMap[state.selectedSkill] || state.selectedSkill;
     const typeLabel = state.craftType === 'normal' ? '일반' : '상급';
     ui.calcTitle.textContent = `${skillLabel} 기반 ${typeLabel} 아비도스 효율`;
 
@@ -686,8 +876,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.skillTabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         state.selectedSkill = tab.getAttribute('data-skill');
+        // 스킬 변경 시 쿨타임 초기화하여 해당 스킬 재료 시세 즉시 갱신
+        lastCraftingFetchTime = 0;
         renderMaterialInputs();
         calculateCraftingEfficiency();
+        fetchCraftingMaterialPrices();
       });
     });
 
@@ -1026,6 +1219,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // API Key가 없는 유저를 위해 서버 캐시에서 실시간 각인 가격을 받아와 프리셋에 동기화
+  async function updateEngravingPricesFromServerCache() {
+    try {
+      const serverRes = await fetch('/api/market/live-dashboard');
+      if (serverRes.ok) {
+        const cacheData = await serverRes.json();
+        if (cacheData && cacheData.engravings && cacheData.engravings.length > 0) {
+          let hasUpdatedPresets = false;
+          state.engravingPrices.forEach(ep => {
+            const matched = cacheData.engravings.find(x => 
+              x.Name.includes(ep.searchName) || ep.searchName.includes(x.Name)
+            );
+            if (matched && matched.CurrentMinPrice > 0) {
+              ep.price = matched.CurrentMinPrice;
+              ep.isRealtime = true;
+              hasUpdatedPresets = true;
+            }
+          });
+
+          if (hasUpdatedPresets) {
+            renderEngravingPresets();
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('서버 캐시에서 각인서 프리셋 동기화 실패:', err);
+    }
+  }
+
   function calculateAuctionDividends() {
     const marketPrice = state.auction.marketPrice;
     const N = state.auction.raidSize;
@@ -1139,9 +1361,44 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.lucide) window.lucide.createIcons();
     }
 
-    // 비동기로 데이터 동시 수집 시작
+    // 비동기로 데이터 수집 시작
     try {
-      console.log('[Dashboard] 서버 캐시 시세 조회를 시도합니다...');
+      // 1) 만약 유저가 API Key를 설정했다면, 서버 캐시 대신 로컬 조회를 최우선적으로 실행하여 실시간 최신 정보 반영
+      if (state.apiKey) {
+        console.log('[Dashboard] 개인 API Key가 감지되어 로컬 OpenAPI 직접 실시간 조회를 우선 수행합니다.');
+        const [gems, engravings] = await Promise.all([
+          updateLiveGemPricesFromApi(),
+          updateTop15EngravingsFromApi()
+        ]);
+
+        state.gemPrices = gems;
+        state.topEngravings = engravings;
+        state.lastMarketFetchTime = Date.now();
+
+        // 로컬 OpenAPI 조회로 가져온 각인서 시세를 분배금 계산기 프리셋에도 즉시 전파
+        let hasUpdatedPresetsLocal = false;
+        state.engravingPrices.forEach(ep => {
+          const matched = engravings.find(x => 
+            x.Name.includes(ep.searchName) || ep.searchName.includes(x.Name)
+          );
+          if (matched && matched.CurrentMinPrice > 0) {
+            ep.price = matched.CurrentMinPrice;
+            ep.isRealtime = true;
+            hasUpdatedPresetsLocal = true;
+          }
+        });
+        
+        if (hasUpdatedPresetsLocal) {
+          renderEngravingPresets();
+        }
+
+        renderGemDashboard(gems);
+        renderEngravingRankDashboard(engravings);
+        return; // 직접 실시간 업데이트 완료
+      }
+
+      // 2) 개인 API Key가 없다면, 서버 스케줄러가 수집해 둔 대시보드 API 캐시 조회
+      console.log('[Dashboard] 개인 API Key가 설정되지 않아 안전한 서버 캐시 조회를 시도합니다.');
       const serverRes = await fetch('/api/market/live-dashboard');
       if (serverRes.ok) {
         const cacheData = await serverRes.json();
@@ -1171,39 +1428,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
           renderGemDashboard(cacheData.gems);
           renderEngravingRankDashboard(cacheData.engravings);
-          return; // 성공했으므로 프론트엔드 직접 OpenAPI 조회는 건너뜀
+          return; // 성공했으므로 완료
         }
       }
       
-      console.log('[Dashboard] 서버 캐시가 유효하지 않거나 비어 있어 로컬 OpenAPI 폴백을 시도합니다.');
-      const [gems, engravings] = await Promise.all([
-        updateLiveGemPricesFromApi(),
-        updateTop15EngravingsFromApi()
-      ]);
-
-      state.gemPrices = gems;
-      state.topEngravings = engravings;
-      state.lastMarketFetchTime = Date.now();
-
-      // 로컬 OpenAPI 조회로 가져온 각인서 시세를 분배금 계산기 프리셋에도 전파
-      let hasUpdatedPresetsLocal = false;
-      state.engravingPrices.forEach(ep => {
-        const matched = engravings.find(x => 
-          x.Name.includes(ep.searchName) || ep.searchName.includes(x.Name)
-        );
-        if (matched && matched.CurrentMinPrice > 0) {
-          ep.price = matched.CurrentMinPrice;
-          ep.isRealtime = true;
-          hasUpdatedPresetsLocal = true;
-        }
-      });
-      
-      if (hasUpdatedPresetsLocal) {
-        renderEngravingPresets();
-      }
-
-      renderGemDashboard(gems);
-      renderEngravingRankDashboard(engravings);
+      throw new Error('서버 시세 캐시가 비어 있거나 호출할 수 없습니다.');
     } catch (err) {
       console.error('[Dashboard] 실시간 데이터 로드 중 치명적 오류 발생, 데모 모드로 복구합니다:', err);
       // 에러 시 데모 모드로 백업
@@ -1216,7 +1445,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // T4 보석 8종 (겁화/작열 7~10렙) 수집 API 구현 (단 2회 호출 우회 설계)
+  // T4 보석 8종 (겁화/작열 7~10렙) 수집 API 구현 (경매장 /api/auction API 전면 교체 적용 및 API Limit 방어 딜레이 수집)
   async function updateLiveGemPricesFromApi() {
     if (!state.apiKey) {
       // API Key가 없으면 모의 데이터 반환
@@ -1224,86 +1453,74 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      // 1) 겁화 보석 리스트 수집 (1회 호출)
-      const fireRes = await fetch('/api/market', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-lostark-api-key': state.apiKey
-        },
-        body: JSON.stringify({
-          Sort: 'CURRENT_MIN_PRICE',
-          CategoryCode: 210000,
-          CharacterClass: '',
-          ItemTier: 4,
-          ItemGrade: '',
-          ItemName: '겁화',
-          PageNo: 1,
-          SortCondition: 'DESC' // 가격 내림차순 정렬 (비싼 7~10레벨 보석이 상위에 수집되도록 보장)
-        })
-      });
+      const gemTargets = [
+        { name: '7레벨 겁화의 보석' },
+        { name: '7레벨 작열의 보석' },
+        { name: '8레벨 겁화의 보석' },
+        { name: '8레벨 작열의 보석' },
+        { name: '9레벨 겁화의 보석' },
+        { name: '9레벨 작열의 보석' },
+        { name: '10레벨 겁화의 보석' },
+        { name: '10레벨 작열의 보석' }
+      ];
 
-      // 2) 작열 보석 리스트 수집 (2회 호출)
-      const iceRes = await fetch('/api/market', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-lostark-api-key': state.apiKey
-        },
-        body: JSON.stringify({
-          Sort: 'CURRENT_MIN_PRICE',
-          CategoryCode: 210000,
-          CharacterClass: '',
-          ItemTier: 4,
-          ItemGrade: '',
-          ItemName: '작열',
-          PageNo: 1,
-          SortCondition: 'DESC' // 가격 내림차순 정렬 (비싼 7~10레벨 보석이 상위에 수집되도록 보장)
-        })
-      });
-
-      if (!fireRes.ok || !iceRes.ok) {
-        throw new Error('보석 API 호출 실패');
-      }
-
-      const fireData = await fireRes.json();
-      const iceData = await iceRes.json();
-
-      const fireItems = fireData.Items || [];
-      const iceItems = iceData.Items || [];
-
-      // 7~10레벨 필터링 대상 정의
-      const targetLevels = ['7레벨', '8레벨', '9레벨', '10레벨'];
       const resultGems = [];
+      const delay = ms => new Promise(res => setTimeout(res, ms));
 
-      targetLevels.forEach(lvl => {
-        // 겁화 필터링
-        const fItem = fireItems.find(x => x.Name.includes(lvl));
-        if (fItem) {
-          resultGems.push({
-            Name: fItem.Name,
-            CurrentMinPrice: fItem.CurrentMinPrice,
-            YesterDayAveragePrice: fItem.YesterDayAveragePrice
+      // 8종 보석을 OpenAPI 초당 호출 한도(Rate Limit 5회)를 우회하기 위해 150ms 간격으로 순차적 안전 조회 수행
+      for (let i = 0; i < gemTargets.length; i++) {
+        const target = gemTargets[i];
+        if (i > 0) await delay(150);
+
+        try {
+          const response = await fetch('/api/auction', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-lostark-api-key': state.apiKey
+            },
+            body: JSON.stringify({
+              ItemLevelMin: 0,
+              ItemLevelMax: 0,
+              ItemGradeQuality: null,
+              SkillOption: null,
+              EtcOptions: null,
+              Sort: 'BUY_PRICE',
+              CategoryCode: 210000,
+              CharacterClass: null,
+              ItemTier: 4,
+              ItemGrade: '',
+              ItemName: target.name,
+              PageNo: 1,
+              SortCondition: 'ASC'
+            })
           });
-        } else {
-          // 누락 시 모의 데이터로 대체
-          const backup = mockGems.find(x => x.Name.includes(lvl) && x.Name.includes('겁화'));
+
+          if (response.ok) {
+            const gemData = await response.json();
+            const items = gemData.Items || [];
+            if (items.length > 0) {
+              const bestItem = items[0];
+              const price = bestItem.AuctionInfo.BuyPrice || bestItem.AuctionInfo.BidStartPrice || 0;
+              resultGems.push({
+                Name: target.name,
+                CurrentMinPrice: price,
+                YesterDayAveragePrice: price
+              });
+            } else {
+              const backup = mockGems.find(x => x.Name === target.name) || { Name: target.name, CurrentMinPrice: 0, YesterDayAveragePrice: 0 };
+              resultGems.push(backup);
+            }
+          } else {
+            const backup = mockGems.find(x => x.Name === target.name) || { Name: target.name, CurrentMinPrice: 0, YesterDayAveragePrice: 0 };
+            resultGems.push(backup);
+          }
+        } catch (err) {
+          console.warn(`보석 ${target.name} 실시간 경매장 조회 실패:`, err.message);
+          const backup = mockGems.find(x => x.Name === target.name) || { Name: target.name, CurrentMinPrice: 0, YesterDayAveragePrice: 0 };
           resultGems.push(backup);
         }
-
-        // 작열 필터링
-        const iItem = iceItems.find(x => x.Name.includes(lvl));
-        if (iItem) {
-          resultGems.push({
-            Name: iItem.Name,
-            CurrentMinPrice: iItem.CurrentMinPrice,
-            YesterDayAveragePrice: iItem.YesterDayAveragePrice
-          });
-        } else {
-          const backup = mockGems.find(x => x.Name.includes(lvl) && x.Name.includes('작열'));
-          resultGems.push(backup);
-        }
-      });
+      }
 
       // 10렙 -> 9렙 -> 8렙 -> 7렙 순으로 정렬하기 위해 파싱 정렬
       resultGems.sort((a, b) => {
@@ -1468,129 +1685,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  // 모의 거래소 시세 데이터베이스 (API 연동 실패 혹은 키가 없는 유저의 백업)
-  const mockMarketDb = [
-    { Name: '10레벨 겁화의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '유물' },
-    { Name: '10레벨 작열의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '유물' },
-    { Name: '9레벨 겁화의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '유물' },
-    { Name: '9레벨 작열의 보석', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '유물' },
-    { Name: '전설 각인서 선택 가방', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '전설' },
-    { Name: '아비도스 유물', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '영웅' },
-    { Name: '오레하 유물', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '희귀' },
-    { Name: '희귀한 유물', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '일반' },
-    { Name: '원한 전설 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '전설' },
-    { Name: '아드레날린 전설 각인서', CurrentMinPrice: 0, YesterDayAveragePrice: 0, Grade: '전설' }
-  ];
 
-  // 거래소 검색 렌더링 함수
-  async function searchMarketItems(query) {
-    ui.marketSearchResults.innerHTML = '<div class="loading-bar" style="text-align:center; padding:20px; color:var(--accent-cyan); font-weight:700;">거래소 데이터를 동기화 중...</div>';
-
-    if (!state.apiKey) {
-      // 로컬 모의 시세 검색 작동
-      setTimeout(() => {
-        const filtered = mockMarketDb.filter(x => x.Name.toLowerCase().includes(query.toLowerCase()));
-        renderMarketResults(filtered);
-      }, 500);
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/market', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-lostark-api-key': state.apiKey
-        },
-        body: JSON.stringify({
-          Sort: 'CURRENT_MIN_PRICE',
-          CategoryCode: 0,
-          CharacterClass: '',
-          // 개별 검색 시 유물 각인서(티어 없음)나 3티어 재료 등 다양한 조건도 매칭되도록 ItemTier 4 고정 해제
-          ItemGrade: '',
-          ItemName: query,
-          PageNo: 1,
-          SortCondition: 'ASC'
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('API Key가 만료되었거나 검색 오류 발생.');
-      }
-
-      const data = await response.json();
-      const items = data.Items || [];
-      renderMarketResults(items);
-    } catch (err) {
-      console.warn('API 검색 오류로 인해 모의 데이터 백업 구동:', err.message);
-      const filtered = mockMarketDb.filter(x => x.Name.toLowerCase().includes(query.toLowerCase()));
-      renderMarketResults(filtered);
-    }
-  }
-
-  // 검색 결과 목록 UI 바인딩
-  function renderMarketResults(items) {
-    ui.marketSearchResults.innerHTML = '';
-
-    // 실시간 시세 연동 체크 (유저가 검색한 최신 시세를 전설 각인서 프리셋에 양방향 동기화)
-    let hasUpdatedEngravings = false;
-    items.forEach(resItem => {
-      const matched = state.engravingPrices.find(ep => 
-        resItem.Name.includes(ep.searchName) && resItem.Name.includes('각인서') && resItem.Name.includes('유물')
-      );
-      if (matched) {
-        matched.price = resItem.CurrentMinPrice;
-        matched.isRealtime = true;
-        hasUpdatedEngravings = true;
-      }
-    });
-    if (hasUpdatedEngravings) {
-      renderEngravingPresets();
-    }
-
-    // API Key가 등록되지 않아 모의 데이터 데모 모드로 작동 중일 경우 예쁜 안내 배너 보강
-    if (!state.apiKey) {
-      const demoWarning = document.createElement('div');
-      demoWarning.style.cssText = 'background:hsla(45, 100%, 55%, 0.1); border:1px solid var(--accent-gold-glow); border-radius:var(--border-radius-md); padding:10px 14px; font-size:11px; color:var(--text-muted); margin-bottom:15px; display:flex; align-items:center; gap:8px; line-height:1.4;';
-      demoWarning.innerHTML = `
-        <i data-lucide="info" style="color:var(--accent-gold); width:14px; height:14px; flex-shrink:0;"></i>
-        <span><strong>데모 모드 작동 중:</strong> API Key가 등록되지 않아 로컬 백업 시세가 검색됩니다. 실제 시세 조회를 원하시면 상단 'API 설정'을 완료해 주세요.</span>
-      `;
-      ui.marketSearchResults.appendChild(demoWarning);
-    }
-
-    if (items.length === 0) {
-      ui.marketSearchResults.innerHTML += '<div class="no-results">검색어와 부합하는 시즌 3 핵심 거래소 아이템이 없습니다.</div>';
-      if (window.lucide) window.lucide.createIcons();
-      return;
-    }
-
-
-    items.forEach(item => {
-      const priceDiff = item.CurrentMinPrice - item.YesterDayAveragePrice;
-      const diffClass = priceDiff > 0 ? 'text-cyan' : (priceDiff < 0 ? 'text-danger' : 'text-dim');
-      const diffArrow = priceDiff > 0 ? '▲' : (priceDiff < 0 ? '▼' : '-');
-
-      const card = document.createElement('div');
-      card.className = 'market-item-card';
-      card.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:hsla(224, 25%, 5%, 0.3); border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:16px; margin-bottom:12px;';
-      card.innerHTML = `
-        <div>
-          <h4 style="font-size:14px; font-weight:700; color:var(--text-white);">${item.Name}</h4>
-          <span style="font-size:11px; color:var(--text-muted);">전일 평균가: ${item.YesterDayAveragePrice.toLocaleString()} G</span>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-family:\'Outfit\', sans-serif; font-size:16px; font-weight:800; color:var(--text-white);">${item.CurrentMinPrice.toLocaleString()}<span style="font-size:11px; color:var(--accent-gold); font-weight:700; margin-left:3px;">G</span></div>
-          <span class="${diffClass}" style="font-size:11px; font-weight:700;">${diffArrow} ${Math.abs(priceDiff).toLocaleString()} G</span>
-        </div>
-      `;
-      ui.marketSearchResults.appendChild(card);
-    });
-
-    if (window.lucide) {
-      window.lucide.createIcons();
-    }
-  }
 
   // 경량 마크다운 렌더러 함수 (AI 응답 텍스트를 터미널 테마 HTML로 다듬어줌)
   function renderMarkdownToHtml(text) {
@@ -1661,38 +1756,13 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="loading-bar" style="color:var(--accent-cyan); font-weight:700; margin-top:10px;">[■■■■■■■■■■■■■■■■■■■■] 100% READY. SERVER REQUEST DISPATCHED...</div>
     `;
 
-    // 현재 계산 완료된 캐릭터 전투 스탯 기댓값 변수 매핑
-    const critFromStat = state.spec.crit * 0.0357;
-    const calculatedCrit = critFromStat + state.spec.adr + state.spec.synergy + state.spec.bracelet + state.spec.manualCrit;
-    
-    const speedFromSwift = state.spec.swift * 0.01717;
-    const finalAtk = 100 + speedFromSwift + state.spec.yearning + (state.spec.feast ? 5 : 0) + (state.spec.massIncrease ? -10 : 0) + state.spec.manualSpeed;
-    const finalMove = 100 + speedFromSwift + state.spec.yearning + (state.spec.feast ? 5 : 0) + state.spec.manualSpeed;
-
-    const payload = {
-      marketData: {
-        selectedSkill: state.selectedSkill,
-        craftType: state.craftType,
-        sellPrice: state.sellPrice,
-        materialPrices: state.materialPrices[state.selectedSkill]
-      },
-      specData: {
-        crit: state.spec.crit,
-        swift: state.spec.swift,
-        calculatedCrit: calculatedCrit,
-        calculatedAtkSpeed: finalAtk,
-        calculatedMoveSpeed: finalMove,
-        mungaLevel: state.spec.mungaLevel
-      }
-    };
-
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'content-type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({}) // 백엔드가 직접 DB에서 시세 추이를 읽으므로 빈 페이로드 전송
       });
 
       if (!response.ok) {
@@ -1707,19 +1777,16 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.warn('AI 분석 API 호출 오류 또는 Key 미등록으로 인해 정밀 시뮬레이션 데모 리포트로 대체 구동합니다:', err.message);
       
-      // AI 호출 실패 시 유저를 감동시킬 극강의 고품질 데모 리포트 마크다운
-      const mockReport = `### 💰 실시간 경제 분석 및 최적의 골드 파밍 수익 루트 추천
-현재 아비도스 제작 효율 연산에 따르면, **${state.selectedSkill === 'archaeology' ? '고고학' : (state.selectedSkill === 'fishing' ? '낚시' : '수렵')} 제작(${state.craftType === 'normal' ? '일반' : '상급'} 아비도스)** 기준 1회 제작 시 기대되는 순이익은 대성공 보너스를 포함하여 약 **+18.4 G**로 흑자 전환 상태입니다.
-현재 생활 재료 시세가 비교적 하향 안정세를 보이고 있으므로, 시장에서 재료를 수급하여 제작 마진을 극대화하는 액션이 극도로 유리합니다. 지금 즉시 영지 에너지를 활성화하십시오!
+      // AI 호출 실패 시 유저를 감동시킬 극강의 고품질 데모 리포트 마크다운 (보석 & 각인서 시세 전망 특화)
+      const mockReport = `### 💎 1. 보석 시세 전망
+최근 7일간의 경매장 데이터 분석에 따르면, **T4 10레벨 겁화의 보석**은 **240,000 G** 선에서 소폭 등락을 반복하며 강력한 지지선을 형성하고 있습니다. 
+카제로스 레이드 등 신규 상위 레이드 출시 임박에 따라 최상위권 유저들의 보석 스펙업 수요가 점진적으로 누적되고 있어, 향후 1~2주간 **약 3% ~ 5%의 우상향 흐름**을 보일 것으로 전망됩니다. 
+반면, 작열의 보석(쿨타임 감소)은 서포터 세팅이 어느 정도 마감 단계에 접어들며 겁화에 비해 거래량이 소폭 둔화되는 양상이 지속될 것입니다. 
 
-### ⚡ 아크 패시브 진화 노드(음속 돌파 & 뭉툭한 가시) 최적화 피드백
-- **뭉툭한 가시 진단**: 현재 입력하신 종합 치적 **${calculatedCrit.toFixed(2)}%**는 ${calculatedCrit > 100 ? '100%를 성공적으로 초과하여 **최적 작동** 중입니다. 단, 초과 치적으로부터 환산되는 보너스 딜 기댓값이 다소 오버되었거나 조율이 필요합니다.' : '100% 이하이므로 뭉툭한 가시 노드의 딜증 전환율이 **전혀 활성화되지 못하고 있습니다.** 치명타 적중률을 긴급히 100% 초과로 복구하십시오.'}
-- **음속 돌파 진단**: 최종 공격 속도 **${finalAtk.toFixed(2)}%** 및 이동 속도 **${finalMove.toFixed(2)}%** 상태로, 공이속 140% 상한 초과 비율에 따라 약 **+${Math.max(0, (finalAtk + finalMove - 280) * 0.3).toFixed(2)}%의 진피증**을 획득하게 됩니다. 속도가 일부 부족하다면 갈망 3레벨 오라 범위를 이탈하지 않는 배치가 절대적입니다.
-
-### 🔮 종합 행동 강령 3가지
-1. **영지 활동력 즉시 소모**: 생활 활동력과 영지 에너지를 융화 재료 제작에 1순위 배정하여 확정 골드 마진을 챙기십시오.
-2. **치명/신속 특성 미세 조율**: 치적 ${calculatedCrit.toFixed(1)}% 및 공이속 스펙을 기반으로 뭉툭한 가시 상한 초과 누수가 있는지 확인하고 조율하십시오.
-3. **낙원 ${state.hellLevel}레벨 보상 1순위 수령**: 금주 낙원 지옥 ${state.hellLevel} 클리어 시 골드보다 실질 가치가 더 높은 **재련 보조재 패키지**를 선택하여 가치를 선점하십시오!
+### 📜 2. 각인서 시세 전망
+주요 유물 각인서 시장은 전반적으로 안정세를 찾고 있습니다. 1티어 대장 각인서인 **아드레날린(약 4,500 G)** 및 **예리한 둔기(약 3,500 G)**는 견고한 수요에 힘입어 횡보세를 지속할 가능성이 큼니다.
+다만, 아크 패시브 진입 장벽 완화에 따른 유물 각인서 완충 수요가 꾸준히 소모되고 있어, 비인기 각인서의 경우 매물 누적으로 인해 완만한 하락세가 예상됩니다. 
+실거래 시 세팅 최적화 타이밍을 노려 주말 저녁 매물 출회가 집중될 때 분할 매수하시는 것을 추천합니다.
 
 ---
 *(⚠️ 본 리포트는 AI API Key 미연동 또는 연결 일시 오류로 인해 출력된 정밀 시뮬레이션 데모 가이드입니다.)*`;
@@ -1733,33 +1800,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 시세 및 AI 페이지 이벤트 바인딩
   function bindMarketAndAiEvents() {
-    // 1) 시세 검색 이벤트
-    ui.btnMarketSearch.addEventListener('click', () => {
-      const query = ui.inputMarketSearch.value.trim();
-      if (query) {
-        searchMarketItems(query);
-      }
-    });
-
-    ui.inputMarketSearch.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const query = ui.inputMarketSearch.value.trim();
-        if (query) {
-          searchMarketItems(query);
-        }
-      }
-    });
-
-    // 2) 프리셋 퀵 태그 버튼 이벤트
-    ui.presetTags.forEach(tag => {
-      tag.addEventListener('click', () => {
-        const query = tag.getAttribute('data-query');
-        ui.inputMarketSearch.value = query;
-        searchMarketItems(query);
-      });
-    });
-
-    // 3) AI 경제 분석 분석 개시 버튼 이벤트
+    // 1) AI 경제 분석 분석 개시 버튼 이벤트
     ui.btnAiAnalyze.addEventListener('click', () => {
       triggerGeminiAnalysis();
     });
@@ -1777,6 +1818,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMaterialInputs();
     bindCraftingEvents();
     calculateCraftingEfficiency();
+    // API Key가 있으면 진입 시 재료 시세 자동 조회 (비동기, UI 블로킹 없음)
+    fetchCraftingMaterialPrices();
+
+    // 재료 시세 새로고침 버튼 이벤트
+    if (ui.btnRefreshCraftPrices) {
+      ui.btnRefreshCraftPrices.addEventListener('click', () => {
+        // 강제 새로고침 - 쿨타임 무시
+        lastCraftingFetchTime = 0;
+        fetchCraftingMaterialPrices();
+      });
+    }
 
     // 캐릭터 스펙 진단기 초기화
     bindSpecEvents();
