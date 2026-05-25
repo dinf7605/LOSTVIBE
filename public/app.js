@@ -48,8 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 레시피 정보 (1회 제작=10개 생산 기준 소모량 및 기본 영지 수수료)
     recipes: {
-      normal: { baseGold: 40, energy: 288, req: { abidos: 16, oreha: 64, rare: 80, ancient: 80 } },
-      superior: { baseGold: 52, energy: 360, req: { abidos: 24, oreha: 96, rare: 100, ancient: 100 } }
+      normal: { baseGold: 40, energy: 288, req: { abidos: 3.3, oreha: 0, rare: 4.5, ancient: 8.6 } },
+      superior: { baseGold: 52, energy: 360, req: { abidos: 4.3, oreha: 0, rare: 5.9, ancient: 11.2 } }
     },
 
     // 스펙 & 진단기 상태값
