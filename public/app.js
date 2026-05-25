@@ -19,25 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
       normal: 300,
       superior: 380
     },
-    defaultFusionPrices: {
-      normal: 300,
-      superior: 380
-    },
     greatSuccessRate: 5,
     goldDiscount: 0,
     
     // 유저 입력 생활 시세 저장 객체 (거래소 묶음 단위 기준: 아비도스/오레하/희귀 10개, 고대 100개)
     materialPrices: {
-      archaeology: { abidos: 65, oreha: 18, rare: 10, ancient: 15 },
-      fishing: { abidos: 60, oreha: 16, rare: 9, ancient: 12 },
-      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 11 },
-      logging: { abidos: 60, oreha: 12, rare: 5, ancient: 12 },
-      mining: { abidos: 55, oreha: 18, rare: 4, ancient: 17 },
-      foraging: { abidos: 52, oreha: 14, rare: 3.5, ancient: 15 }
-    },
-
-    // 기본 시세 (리셋용)
-    defaultPrices: {
       archaeology: { abidos: 65, oreha: 18, rare: 10, ancient: 15 },
       fishing: { abidos: 60, oreha: 16, rare: 9, ancient: 12 },
       hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 11 },
@@ -146,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
     valGoldDiscount: document.getElementById('val-gold-discount'),
     skillTabs: document.querySelectorAll('.skill-tab'),
     matInputsContainer: document.getElementById('mat-inputs-container'),
-    btnResetPrices: document.getElementById('btn-reset-prices'),
     btnRefreshCraftPrices: document.getElementById('btn-refresh-craft-prices'),
     craftingPriceStatusText: document.getElementById('crafting-price-status-text'),
 
@@ -1124,17 +1109,6 @@ document.addEventListener('DOMContentLoaded', () => {
         calculateCraftingEfficiency();
         fetchCraftingMaterialPrices();
       });
-    });
-
-    ui.btnResetPrices.addEventListener('click', () => {
-      if (confirm('모든 생활 재료 및 융화재료 시세를 기본값으로 리셋하시겠습니까?')) {
-        state.materialPrices = JSON.parse(JSON.stringify(state.defaultPrices));
-        state.fusionPrices = JSON.parse(JSON.stringify(state.defaultFusionPrices));
-        state.sellPrice = state.fusionPrices[state.craftType];
-        if (ui.inputSellPrice) ui.inputSellPrice.value = state.sellPrice;
-        renderMaterialInputs();
-        calculateCraftingEfficiency();
-      }
     });
 
     [ui.inputCurrentEnergy, ui.inputMaxEnergy, ui.inputCraftCount].forEach(input => {
