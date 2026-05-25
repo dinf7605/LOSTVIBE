@@ -831,7 +831,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const discountedGoldCost = recipe.baseGold * (1 - state.goldDiscount / 100);
     const totalCost = matCost + discountedGoldCost;
 
-    const baseRevenue = state.sellPrice * 0.95;
+    // 1회 제작 시 아비도스 융화재료 30개가 생산되므로 30배를 곱하여 매출을 올바르게 구하고 5% 경매장 수수료를 적용합니다.
+    const baseRevenue = 30 * state.sellPrice * 0.95;
     const bonusRevenue = baseRevenue * (state.greatSuccessRate / 100);
     const totalRevenue = baseRevenue + bonusRevenue;
     const netProfit = totalRevenue - totalCost;
@@ -872,6 +873,121 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     calculateStrongholdTimer();
+    updateSkillEfficiencyComparison();
+  }
+
+  function updateSkillEfficiencyComparison() {
+    const compareContainer = document.getElementById('compare-list-container');
+    if (!compareContainer) return;
+
+    const recipe = state.recipes[state.craftType];
+    const skills = ['archaeology', 'fishing', 'hunting', 'logging', 'mining', 'foraging'];
+    const skillLabelMap = {
+      archaeology: '고고학',
+      fishing: '낚시',
+      hunting: '수렵',
+      logging: '벌목',
+      mining: '채광',
+      foraging: '채집'
+    };
+
+    const results = skills.map(skill => {
+      const prices = state.materialPrices[skill];
+      
+      const matCost = (
+        (recipe.req.abidos / 10) * prices.abidos +
+        (recipe.req.oreha / 10) * prices.oreha +
+        (recipe.req.rare / 10) * prices.rare +
+        (recipe.req.ancient / 100) * prices.ancient
+      );
+      
+      const discountedGoldCost = recipe.baseGold * (1 - state.goldDiscount / 100);
+      const totalCost = matCost + discountedGoldCost;
+
+      const baseRevenue = 30 * state.sellPrice * 0.95;
+      const bonusRevenue = baseRevenue * (state.greatSuccessRate / 100);
+      const totalRevenue = baseRevenue + bonusRevenue;
+      const netProfit = totalRevenue - totalCost;
+
+      return {
+        key: skill,
+        label: skillLabelMap[skill],
+        netProfit: netProfit,
+        totalCost: totalCost
+      };
+    });
+
+    // 순이익 내림차순 정렬
+    results.sort((a, b) => b.netProfit - a.netProfit);
+
+    const maxProfit = results[0].netProfit;
+    compareContainer.innerHTML = '';
+
+    results.forEach((res, index) => {
+      const isBest = index === 0;
+      const profitText = (res.netProfit >= 0 ? '+' : '') + res.netProfit.toFixed(1);
+      
+      let badgeHtml = '';
+      if (isBest && res.netProfit > 0) {
+        badgeHtml = `<span style="background: linear-gradient(135deg, #ffd700, #ffa500); color: #111; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">👑 최적 추천</span>`;
+      } else if (res.netProfit > 0) {
+        badgeHtml = `<span style="background: rgba(46, 204, 113, 0.15); color: #2ecc71; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">수익</span>`;
+      } else {
+        badgeHtml = `<span style="background: rgba(231, 76, 60, 0.15); color: #e74c3c; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">손해</span>`;
+      }
+
+      const row = document.createElement('div');
+      row.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: ${res.key === state.selectedSkill ? 'rgba(100, 200, 255, 0.08)' : 'rgba(255, 255, 255, 0.01)'};
+        border: 1px solid ${res.key === state.selectedSkill ? 'var(--accent-cyan-glow)' : 'rgba(255, 255, 255, 0.03)'};
+        border-radius: 8px;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      `;
+
+      row.addEventListener('mouseenter', () => {
+        row.style.background = 'rgba(255, 255, 255, 0.05)';
+        row.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+      });
+      row.addEventListener('mouseleave', () => {
+        row.style.background = res.key === state.selectedSkill ? 'rgba(100, 200, 255, 0.08)' : 'rgba(255, 255, 255, 0.01)';
+        row.style.borderColor = res.key === state.selectedSkill ? 'var(--accent-cyan-glow)' : 'rgba(255, 255, 255, 0.03)';
+      });
+
+      row.addEventListener('click', () => {
+        const tabToClick = Array.from(ui.skillTabs).find(t => t.getAttribute('data-skill') === res.key);
+        if (tabToClick) {
+          tabToClick.click();
+        }
+      });
+
+      // 바 길이 (프로비 비율)
+      const absMax = Math.abs(maxProfit) || 1;
+      const barWidth = Math.max(5, Math.min(100, (Math.abs(res.netProfit) / absMax) * 100));
+
+      row.innerHTML = `
+        <span style="font-size: 12px; font-weight: 800; color: ${isBest ? 'var(--accent-gold)' : 'var(--text-muted)'}; min-width: 16px;">${index + 1}</span>
+        <div style="display: flex; align-items: center; gap: 6px; min-width: 70px;">
+          <span style="font-size: 13px; font-weight: 700; color: ${res.key === state.selectedSkill ? 'var(--accent-cyan)' : 'var(--text-bright)'}">${res.label}</span>
+        </div>
+        <div style="flex-grow: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+            <span style="font-size: 12px; font-weight: 700; color: ${res.netProfit >= 0 ? '#2ecc71' : '#e74c3c'}">${profitText} G</span>
+            ${badgeHtml}
+          </div>
+          <div style="background: rgba(255, 255, 255, 0.05); height: 4px; border-radius: 2px; overflow: hidden; width: 100%;">
+            <div style="background: ${res.netProfit >= 0 ? 'linear-gradient(90deg, #2ecc71, #1abc9c)' : 'linear-gradient(90deg, #e74c3c, #c0392b)'}; height: 100%; width: ${barWidth}%"></div>
+          </div>
+        </div>
+      `;
+
+      compareContainer.appendChild(row);
+    });
+  }
   }
 
   function calculateStrongholdTimer() {
