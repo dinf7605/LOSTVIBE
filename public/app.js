@@ -831,8 +831,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const discountedGoldCost = recipe.baseGold * (1 - state.goldDiscount / 100);
     const totalCost = matCost + discountedGoldCost;
 
-    // 1회 제작 시 아비도스 융화재료 30개가 생산되므로 30배를 곱하여 매출을 올바르게 구하고 5% 경매장 수수료를 적용합니다.
-    const baseRevenue = 30 * state.sellPrice * 0.95;
+    // 1회 제작 시 아비도스 융화재료 10개가 생산되므로 10배를 곱하여 매출을 올바르게 구하고 5% 경매장 수수료를 적용합니다.
+    const baseRevenue = 10 * state.sellPrice * 0.95;
     const bonusRevenue = baseRevenue * (state.greatSuccessRate / 100);
     const totalRevenue = baseRevenue + bonusRevenue;
     const netProfit = totalRevenue - totalCost;
@@ -904,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const discountedGoldCost = recipe.baseGold * (1 - state.goldDiscount / 100);
       const totalCost = matCost + discountedGoldCost;
 
-      const baseRevenue = 30 * state.sellPrice * 0.95;
+      const baseRevenue = 10 * state.sellPrice * 0.95;
       const bonusRevenue = baseRevenue * (state.greatSuccessRate / 100);
       const totalRevenue = baseRevenue + bonusRevenue;
       const netProfit = totalRevenue - totalCost;
