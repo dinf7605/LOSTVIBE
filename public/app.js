@@ -817,22 +817,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function calculateCraftingEfficiency() {
-    const recipe = state.recipes[state.craftType];
-    const prices = state.materialPrices[state.selectedSkill];
+    const recipe = state.recipes[state.craftType] || { baseGold: 300, energy: 288, req: { abidos: 0, oreha: 0, rare: 0, ancient: 0 } };
+    const prices = state.materialPrices[state.selectedSkill] || { abidos: 0, oreha: 0, rare: 0, ancient: 0 };
+
+    const abidosPrice = prices.abidos || 0;
+    const orehaPrice = prices.oreha || 0;
+    const rarePrice = prices.rare || 0;
+    const ancientPrice = prices.ancient || 0;
 
     // 아비도스, 오레하, 희귀 등급 재료는 10개 거래 단위(BundleCount=10)이므로 / 10, 고대 재료만 100개 거래 단위(BundleCount=100)이므로 / 100으로 나눕니다.
     const matCost = (
-      (recipe.req.abidos / 10) * prices.abidos +
-      (recipe.req.oreha / 10) * prices.oreha +
-      (recipe.req.rare / 10) * prices.rare +
-      (recipe.req.ancient / 100) * prices.ancient
+      (recipe.req.abidos / 10) * abidosPrice +
+      (recipe.req.oreha / 10) * orehaPrice +
+      (recipe.req.rare / 10) * rarePrice +
+      (recipe.req.ancient / 100) * ancientPrice
     );
 
-    const discountedGoldCost = recipe.baseGold * (1 - state.goldDiscount / 100);
+    const discountedGoldCost = (recipe.baseGold || 0) * (1 - state.goldDiscount / 100);
     const totalCost = matCost + discountedGoldCost;
 
     // 1회 제작 시 아비도스 융화재료 10개가 생산되므로 10배를 곱하여 매출을 올바르게 구하고 5% 경매장 수수료를 적용합니다.
-    const baseRevenue = 10 * state.sellPrice * 0.95;
+    const baseRevenue = 10 * (state.sellPrice || 0) * 0.95;
     const bonusRevenue = baseRevenue * (state.greatSuccessRate / 100);
     const totalRevenue = baseRevenue + bonusRevenue;
     const netProfit = totalRevenue - totalCost;
@@ -880,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const compareContainer = document.getElementById('compare-list-container');
     if (!compareContainer) return;
 
-    const recipe = state.recipes[state.craftType];
+    const recipe = state.recipes[state.craftType] || { baseGold: 300, energy: 288, req: { abidos: 0, oreha: 0, rare: 0, ancient: 0 } };
     const skills = ['archaeology', 'fishing', 'hunting', 'logging', 'mining', 'foraging'];
     const skillLabelMap = {
       archaeology: '고고학',
@@ -892,19 +897,24 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const results = skills.map(skill => {
-      const prices = state.materialPrices[skill];
+      const prices = state.materialPrices[skill] || { abidos: 0, oreha: 0, rare: 0, ancient: 0 };
       
+      const abidosPrice = prices.abidos || 0;
+      const orehaPrice = prices.oreha || 0;
+      const rarePrice = prices.rare || 0;
+      const ancientPrice = prices.ancient || 0;
+
       const matCost = (
-        (recipe.req.abidos / 10) * prices.abidos +
-        (recipe.req.oreha / 10) * prices.oreha +
-        (recipe.req.rare / 10) * prices.rare +
-        (recipe.req.ancient / 100) * prices.ancient
+        (recipe.req.abidos / 10) * abidosPrice +
+        (recipe.req.oreha / 10) * orehaPrice +
+        (recipe.req.rare / 10) * rarePrice +
+        (recipe.req.ancient / 100) * ancientPrice
       );
       
-      const discountedGoldCost = recipe.baseGold * (1 - state.goldDiscount / 100);
+      const discountedGoldCost = (recipe.baseGold || 0) * (1 - state.goldDiscount / 100);
       const totalCost = matCost + discountedGoldCost;
 
-      const baseRevenue = 10 * state.sellPrice * 0.95;
+      const baseRevenue = 10 * (state.sellPrice || 0) * 0.95;
       const bonusRevenue = baseRevenue * (state.greatSuccessRate / 100);
       const totalRevenue = baseRevenue + bonusRevenue;
       const netProfit = totalRevenue - totalCost;
@@ -987,7 +997,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       compareContainer.appendChild(row);
     });
-  }
   }
 
   function calculateStrongholdTimer() {
