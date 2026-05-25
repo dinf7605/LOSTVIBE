@@ -18,24 +18,24 @@ document.addEventListener('DOMContentLoaded', () => {
     greatSuccessRate: 5,
     goldDiscount: 0,
     
-    // 유저 입력 생활 시세 저장 객체 (100개 기준)
+    // 유저 입력 생활 시세 저장 객체 (거래소 묶음 단위 기준: 아비도스/오레하/희귀 10개, 고대 100개)
     materialPrices: {
-      archaeology: { abidos: 65, oreha: 18, rare: 10, ancient: 0.15 },
-      fishing: { abidos: 60, oreha: 16, rare: 9, ancient: 0.12 },
-      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 0.11 },
-      logging: { abidos: 60, oreha: 12, rare: 5, ancient: 0.12 },
-      mining: { abidos: 55, oreha: 18, rare: 4, ancient: 0.17 },
-      foraging: { abidos: 52, oreha: 14, rare: 3.5, ancient: 0.15 }
+      archaeology: { abidos: 65, oreha: 18, rare: 10, ancient: 15 },
+      fishing: { abidos: 60, oreha: 16, rare: 9, ancient: 12 },
+      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 11 },
+      logging: { abidos: 60, oreha: 12, rare: 5, ancient: 12 },
+      mining: { abidos: 55, oreha: 18, rare: 4, ancient: 17 },
+      foraging: { abidos: 52, oreha: 14, rare: 3.5, ancient: 15 }
     },
 
     // 기본 시세 (리셋용)
     defaultPrices: {
-      archaeology: { abidos: 65, oreha: 18, rare: 10, ancient: 0.15 },
-      fishing: { abidos: 60, oreha: 16, rare: 9, ancient: 0.12 },
-      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 0.11 },
-      logging: { abidos: 60, oreha: 12, rare: 5, ancient: 0.12 },
-      mining: { abidos: 55, oreha: 18, rare: 4, ancient: 0.17 },
-      foraging: { abidos: 52, oreha: 14, rare: 3.5, ancient: 0.15 }
+      archaeology: { abidos: 65, oreha: 18, rare: 10, ancient: 15 },
+      fishing: { abidos: 60, oreha: 16, rare: 9, ancient: 12 },
+      hunting: { abidos: 58, oreha: 15, rare: 8.5, ancient: 11 },
+      logging: { abidos: 60, oreha: 12, rare: 5, ancient: 12 },
+      mining: { abidos: 55, oreha: 18, rare: 4, ancient: 17 },
+      foraging: { abidos: 52, oreha: 14, rare: 3.5, ancient: 15 }
     },
 
     // 레시피 정보 (1회 제작=30개 기준 소모량)
@@ -635,10 +635,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const matched = items.find(i => i.Name === target.name) || items[0];
 
           if (matched && matched.CurrentMinPrice > 0) {
-            // CurrentMinPrice는 1개 기준 → 100개 기준으로 환산
-            state.materialPrices[state.selectedSkill][target.key] = matched.CurrentMinPrice * 100;
+            // CurrentMinPrice는 이미 경매장 묶음 단위 가격(아비도스/오레하/희귀 10개, 고대 100개)이므로 그대로 저장
+            state.materialPrices[state.selectedSkill][target.key] = matched.CurrentMinPrice;
             successCount++;
-            console.log(`[아비도스] ${target.name}: ${(matched.CurrentMinPrice * 100).toLocaleString()} G (100개)`);
+            console.log(`[아비도스] ${target.name}: ${matched.CurrentMinPrice.toLocaleString()} G`);
           }
 
           // 연속 호출 간격 150ms 확보 (Rate Limit 안전 방어)
@@ -671,10 +671,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const cacheData = await cacheRes.json();
         if (cacheData.craftingMaterials && cacheData.craftingMaterials[state.selectedSkill]) {
           const cached = cacheData.craftingMaterials[state.selectedSkill];
-          // 서버 캐시는 1개 기준이므로 100개 기준으로 환산
+          // 서버 캐시 시세도 경매장 묶음 단위 가격이므로 그대로 반영
           ['abidos', 'oreha', 'rare', 'ancient'].forEach(key => {
             if (cached[key] && cached[key] > 0) {
-              state.materialPrices[state.selectedSkill][key] = cached[key] * 100;
+              state.materialPrices[state.selectedSkill][key] = cached[key];
             }
           });
           renderMaterialInputs();
@@ -721,10 +721,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const price = currentPrices[key];
       const label = currentLabels[key];
 
+      const unitMap = {
+        abidos: '10개당',
+        oreha: '10개당',
+        rare: '10개당',
+        ancient: '100개당'
+      };
+      const unitText = unitMap[key] || '100개당';
+
       const row = document.createElement('div');
       row.className = 'input-row';
       row.innerHTML = `
-        <label for="mat-input-${key}">${label} 시세 (100개당)</label>
+        <label for="mat-input-${key}">${label} 시세 (${unitText})</label>
         <input type="number" id="mat-input-${key}" data-key="${key}" value="${price}" step="0.01" min="0">
       `;
 
@@ -743,10 +751,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const recipe = state.recipes[state.craftType];
     const prices = state.materialPrices[state.selectedSkill];
 
+    // 아비도스, 오레하, 희귀 등급 재료는 10개 거래 단위(BundleCount=10)이므로 / 10, 고대 재료만 100개 거래 단위(BundleCount=100)이므로 / 100으로 나눕니다.
     const matCost = (
-      (recipe.req.abidos / 100) * prices.abidos +
-      (recipe.req.oreha / 100) * prices.oreha +
-      (recipe.req.rare / 100) * prices.rare +
+      (recipe.req.abidos / 10) * prices.abidos +
+      (recipe.req.oreha / 10) * prices.oreha +
+      (recipe.req.rare / 10) * prices.rare +
       (recipe.req.ancient / 100) * prices.ancient
     );
 
