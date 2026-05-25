@@ -153,7 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 계산기 결과창
     profitBadge: document.getElementById('txt-profit-badge'),
     calcTitle: document.getElementById('txt-calc-title'),
-    netProfit: document.getElementById('txt-net-profit'),
+    netProfitBuy: document.getElementById('txt-net-profit-buy'),
+    netProfitSelf: document.getElementById('txt-net-profit-self'),
     detailMatCost: document.getElementById('txt-detail-mat-cost'),
     detailGoldCost: document.getElementById('txt-detail-gold-cost'),
     detailTotalCost: document.getElementById('txt-detail-total-cost'),
@@ -262,6 +263,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (pageId === 'market') {
       updateMarketDashboardData();
+    }
+
+    if (pageId === 'calculator') {
+      // 아비도스 제작 계산기 진입 시 6대 생활 재료 최신 시세 일괄 자동 로드 수행
+      fetchCraftingMaterialPrices();
     }
 
     if (window.location.hash !== `#/${pageId}`) {
@@ -586,18 +592,20 @@ document.addEventListener('DOMContentLoaded', () => {
     ]
   };
 
-  // API를 통해 현재 선택된 스킬의 재료 시세를 일괄 조회 (하이브리드: 개인 API 직접조회 + 서버 캐시 폴백)
+  // API를 통해 모든 6대 생활 스킬의 재료 시세를 일괄 조회하여 세팅 (하이브리드: 개인 API 직접조회 + 서버 캐시 폴백)
   async function fetchCraftingMaterialPrices() {
     // 상태 배너 업데이트: 조회 중
     if (ui.craftingPriceStatusText) {
-      ui.craftingPriceStatusText.textContent = '시세 조회 중...';
+      ui.craftingPriceStatusText.textContent = '모든 시세 로딩 중...';
       ui.craftingPriceStatusText.style.color = 'var(--accent-cyan)';
     }
 
-    // 1) 개인 API Key가 있는 경우: 직접 로스트아크 OpenAPI로 빠르게 조회
+    const skills = ['archaeology', 'fishing', 'hunting', 'logging', 'mining', 'foraging'];
+
+    // 1) 개인 API Key가 있는 경우: 직접 모든 스킬의 시세를 로스트아크 OpenAPI로 실시간 조회
     if (state.apiKey) {
       const now = Date.now();
-      // 60초 쿨타임 - 개인 키이므로 비교적 빠르게 허용하되 연속 과호출 방지
+      // 60초 쿨타임 - 개인 키의 과호출 안전 방어
       if (now - lastCraftingFetchTime < 60000) {
         console.log('[아비도스] 60초 쿨타임 중 - 캐시된 시세 사용');
         if (ui.craftingPriceStatusText) {
@@ -607,53 +615,48 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      console.log('[아비도스] 개인 API Key 감지 → 직접 실시간 조회 시작...');
+      console.log('[아비도스] 개인 API Key 감지 → 모든 6대 생활 재료 일괄 조회 시작...');
 
-      const targets = materialSearchMap[state.selectedSkill];
       let successCount = 0;
 
-      for (const target of targets) {
-        try {
-          const response = await fetch('/api/market', {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              'x-lostark-api-key': state.apiKey
-            },
-            body: JSON.stringify({
-              Sort: 'CURRENT_MIN_PRICE',
-              CategoryCode: 90000,
-              CharacterClass: '',
-              ItemGrade: '',
-              ItemName: target.name,
-              PageNo: 1,
-              SortCondition: 'ASC'
-            })
-          });
+      // 6대 스킬 돌며 전체 조회
+      for (const skill of skills) {
+        const targets = materialSearchMap[skill];
+        for (const target of targets) {
+          try {
+            const response = await fetch('/api/market', {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                'x-lostark-api-key': state.apiKey
+              },
+              body: JSON.stringify({
+                Sort: 'CURRENT_MIN_PRICE',
+                CategoryCode: 90000,
+                CharacterClass: '',
+                ItemGrade: '',
+                ItemName: target.name,
+                PageNo: 1,
+                SortCondition: 'ASC'
+              })
+            });
 
-          if (!response.ok) {
-            console.warn(`[아비도스] ${target.name} 조회 실패 (${response.status})`);
-            continue;
+            if (response.ok) {
+              const data = await response.json();
+              const items = data.Items || [];
+              const matched = items.find(i => i.Name === target.name) || items[0];
+
+              if (matched && matched.CurrentMinPrice > 0) {
+                state.materialPrices[skill][target.key] = matched.CurrentMinPrice;
+                successCount++;
+                console.log(`[API 직접조회] [${skill}] ${target.name}: ${matched.CurrentMinPrice} G`);
+              }
+            }
+            // 150ms 딜레이로 Rate Limit 안전 보호
+            await new Promise(resolve => setTimeout(resolve, 150));
+          } catch (err) {
+            console.warn(`[API 직접조회] [${skill}] ${target.name} 조회 오류:`, err.message);
           }
-
-          const data = await response.json();
-          const items = data.Items || [];
-
-          // 조회된 아이템 중 이름이 정확히 일치하는 것 우선, 없으면 첫 번째 사용
-          const matched = items.find(i => i.Name === target.name) || items[0];
-
-          if (matched && matched.CurrentMinPrice > 0) {
-            // CurrentMinPrice는 이미 경매장 묶음 단위 가격(아비도스/오레하/희귀 10개, 고대 100개)이므로 그대로 저장
-            state.materialPrices[state.selectedSkill][target.key] = matched.CurrentMinPrice;
-            successCount++;
-            console.log(`[아비도스] ${target.name}: ${matched.CurrentMinPrice.toLocaleString()} G`);
-          }
-
-          // 연속 호출 간격 150ms 확보 (Rate Limit 안전 방어)
-          await new Promise(resolve => setTimeout(resolve, 150));
-
-        } catch (err) {
-          console.warn(`[아비도스] ${target.name} 조회 오류:`, err.message);
         }
       }
 
@@ -710,26 +713,30 @@ document.addEventListener('DOMContentLoaded', () => {
         calculateCraftingEfficiency();
         const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
         if (ui.craftingPriceStatusText) {
-          ui.craftingPriceStatusText.textContent = `실시간 시세 반영 완료 (${timeStr})`;
+          ui.craftingPriceStatusText.textContent = `실시간 모든 시세 반영 완료 (${timeStr})`;
           ui.craftingPriceStatusText.style.color = 'var(--success-green)';
         }
-        console.log(`[아비도스] 개인 API 직접 조회 완료 (${successCount}건 반영)`);
+        console.log(`[아비도스] 개인 API 직접 일괄 조회 완료 (${successCount}건 반영)`);
         return;
       }
     }
 
-    // 2) 개인 API Key 미등록 또는 직접 조회 실패 시: 서버 캐시 API에서 가져오기
-    console.log('[아비도스] 서버 캐시 API에서 생활재료 시세 불러오기...');
+    // 2) 개인 API Key 미등록 또는 직접 조회 실패 시: 서버 캐시 API에서 가져와서 6대 생활 시세 통째로 일괄 대입
+    console.log('[아비도스] 서버 캐시 API에서 6대 생활재료 시세 일괄 동기화...');
     try {
       const cacheRes = await fetch('/api/market/live-dashboard');
       if (cacheRes.ok) {
         const cacheData = await cacheRes.json();
-        if (cacheData.craftingMaterials && cacheData.craftingMaterials[state.selectedSkill]) {
-          const cached = cacheData.craftingMaterials[state.selectedSkill];
-          // 서버 캐시 시세도 경매장 묶음 단위 가격이므로 그대로 반영
-          ['abidos', 'oreha', 'rare', 'ancient'].forEach(key => {
-            if (cached[key] && cached[key] > 0) {
-              state.materialPrices[state.selectedSkill][key] = cached[key];
+        if (cacheData.craftingMaterials) {
+          // 6개 스킬 모두의 시세를 서버 캐시로부터 세팅
+          skills.forEach(skill => {
+            if (cacheData.craftingMaterials[skill]) {
+              const cached = cacheData.craftingMaterials[skill];
+              ['abidos', 'oreha', 'rare', 'ancient'].forEach(key => {
+                if (cached[key] && cached[key] > 0) {
+                  state.materialPrices[skill][key] = cached[key];
+                }
+              });
             }
           });
 
@@ -750,10 +757,10 @@ document.addEventListener('DOMContentLoaded', () => {
           calculateCraftingEfficiency();
           const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
           if (ui.craftingPriceStatusText) {
-            ui.craftingPriceStatusText.textContent = `서버 캐시 시세 반영 (${timeStr})`;
-            ui.craftingPriceStatusText.style.color = 'var(--accent-gold)';
+            ui.craftingPriceStatusText.textContent = `실시간 모든 시세 반영 완료 (${timeStr})`;
+            ui.craftingPriceStatusText.style.color = 'var(--success-green)';
           }
-          console.log('[아비도스] 서버 캐시 시세 반영 완료.');
+          console.log('[아비도스] 서버 캐시로부터 6대 생활재료 시세 일괄 주입 완료.');
           return;
         }
       }
@@ -847,7 +854,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const baseRevenue = 10 * netItemPrice; // 기본 10개 판매액
     const bonusRevenue = 10 * netItemPrice * finalGsRate; // 대성공 보너스 기대 판매액
     const totalRevenue = expectedYield * netItemPrice;
-    const netProfit = totalRevenue - totalCost;
+    
+    const netProfitBuy = totalRevenue - totalCost;
+    const netProfitSelf = totalRevenue - discountedGoldCost;
 
     ui.detailMatCost.textContent = `${matCost.toFixed(1)} G`;
     ui.detailGoldCost.textContent = `${discountedGoldCost.toFixed(0)} G`;
@@ -855,8 +864,14 @@ document.addEventListener('DOMContentLoaded', () => {
     ui.detailRevenue.textContent = `${baseRevenue.toFixed(1)} G`;
     ui.detailBonus.textContent = `+${bonusRevenue.toFixed(1)} G`;
 
-    const netProfitStr = (netProfit >= 0 ? '+' : '') + netProfit.toFixed(1);
-    ui.netProfit.textContent = netProfitStr;
+    if (ui.netProfitBuy) {
+      ui.netProfitBuy.textContent = (netProfitBuy >= 0 ? '+' : '') + netProfitBuy.toFixed(1);
+      ui.netProfitBuy.className = netProfitBuy >= 0 ? 'text-green' : 'text-danger';
+    }
+    if (ui.netProfitSelf) {
+      ui.netProfitSelf.textContent = (netProfitSelf >= 0 ? '+' : '') + netProfitSelf.toFixed(1);
+      ui.netProfitSelf.className = netProfitSelf >= 0 ? 'text-green' : 'text-danger';
+    }
 
     const skillLabelMap = {
       archaeology: '고고학',
@@ -870,14 +885,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const typeLabel = state.craftType === 'normal' ? '일반' : '상급';
     ui.calcTitle.textContent = `${skillLabel} 기반 ${typeLabel} 아비도스 효율`;
 
-    if (netProfit >= 0) {
-      ui.netProfit.className = 'text-green';
+    // 흑자/적자 뱃지는 종합적인 "구매 후 제작" 즉 경매장 전량 구매 시의 수익(netProfitBuy)을 기준으로 표기합니다.
+    if (netProfitBuy >= 0) {
       ui.profitBadge.textContent = '수익 흑자';
       ui.profitBadge.style.background = 'hsla(145, 90%, 45%, 0.15)';
       ui.profitBadge.style.color = 'var(--success-green)';
       ui.profitBadge.style.borderColor = 'var(--success-green-glow)';
     } else {
-      ui.netProfit.className = 'text-danger';
       ui.profitBadge.textContent = '수익 적자';
       ui.profitBadge.style.background = 'hsla(355, 90%, 52%, 0.15)';
       ui.profitBadge.style.color = 'var(--danger-red)';
@@ -926,33 +940,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const netItemPrice = Math.max(0, (state.sellPrice || 0) - Math.ceil((state.sellPrice || 0) * 0.05));
       const totalRevenue = expectedYield * netItemPrice;
-      const netProfit = totalRevenue - totalCost;
+      
+      const netProfitBuy = totalRevenue - totalCost;
+      const netProfitSelf = totalRevenue - discountedGoldCost;
 
       return {
         key: skill,
         label: skillLabelMap[skill],
-        netProfit: netProfit,
+        netProfitBuy: netProfitBuy,
+        netProfitSelf: netProfitSelf,
         totalCost: totalCost
       };
     });
 
-    // 순이익 내림차순 정렬
-    results.sort((a, b) => b.netProfit - a.netProfit);
+    // 경매장 전량 구매 시 순이익 기준으로 랭킹을 정렬합니다.
+    results.sort((a, b) => b.netProfitBuy - a.netProfitBuy);
 
-    const maxProfit = results[0].netProfit;
+    const maxProfit = results[0].netProfitBuy;
     compareContainer.innerHTML = '';
 
     results.forEach((res, index) => {
       const isBest = index === 0;
-      const profitText = (res.netProfit >= 0 ? '+' : '') + res.netProfit.toFixed(1);
+      const profitBuyText = (res.netProfitBuy >= 0 ? '+' : '') + res.netProfitBuy.toFixed(1);
+      const profitSelfText = (res.netProfitSelf >= 0 ? '+' : '') + res.netProfitSelf.toFixed(1);
       
       let badgeHtml = '';
-      if (isBest && res.netProfit > 0) {
-        badgeHtml = `<span style="background: linear-gradient(135deg, #ffd700, #ffa500); color: #111; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">👑 최적 추천</span>`;
-      } else if (res.netProfit > 0) {
-        badgeHtml = `<span style="background: rgba(46, 204, 113, 0.15); color: #2ecc71; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">수익</span>`;
+      if (isBest && res.netProfitBuy > 0) {
+        badgeHtml = `<span style="background: linear-gradient(135deg, #ffd700, #ffa500); color: #111; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; display: inline-block;">👑 최적 추천</span>`;
+      } else if (res.netProfitBuy > 0) {
+        badgeHtml = `<span style="background: rgba(46, 204, 113, 0.15); color: #2ecc71; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block;">수익</span>`;
       } else {
-        badgeHtml = `<span style="background: rgba(231, 76, 60, 0.15); color: #e74c3c; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">손해</span>`;
+        badgeHtml = `<span style="background: rgba(231, 76, 60, 0.15); color: #e74c3c; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block;">손해</span>`;
       }
 
       const row = document.createElement('div');
@@ -984,23 +1002,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      // 바 길이 (프로비 비율)
+      // 바 길이 (구매 시 순이익 비율 기준)
       const absMax = Math.abs(maxProfit) || 1;
-      const barWidth = Math.max(5, Math.min(100, (Math.abs(res.netProfit) / absMax) * 100));
+      const barWidth = Math.max(5, Math.min(100, (Math.abs(res.netProfitBuy) / absMax) * 100));
 
       row.innerHTML = `
         <span style="font-size: 12px; font-weight: 800; color: ${isBest ? 'var(--accent-gold)' : 'var(--text-muted)'}; min-width: 16px;">${index + 1}</span>
         <div style="display: flex; align-items: center; gap: 6px; min-width: 70px;">
           <span style="font-size: 13px; font-weight: 700; color: ${res.key === state.selectedSkill ? 'var(--accent-cyan)' : 'var(--text-bright)'}">${res.label}</span>
         </div>
-        <div style="flex-grow: 1;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
-            <span style="font-size: 12px; font-weight: 700; color: ${res.netProfit >= 0 ? '#2ecc71' : '#e74c3c'}">${profitText} G</span>
-            ${badgeHtml}
+        <div style="flex-grow: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center;">
+          <!-- 구매 제작 순수익 -->
+          <div>
+            <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 1px;">🛒 구매 시</div>
+            <span style="font-size: 12px; font-weight: 800; color: ${res.netProfitBuy >= 0 ? '#2ecc71' : '#e74c3c'}">${profitBuyText} G</span>
           </div>
-          <div style="background: rgba(255, 255, 255, 0.05); height: 4px; border-radius: 2px; overflow: hidden; width: 100%;">
-            <div style="background: ${res.netProfit >= 0 ? 'linear-gradient(90deg, #2ecc71, #1abc9c)' : 'linear-gradient(90deg, #e74c3c, #c0392b)'}; height: 100%; width: ${barWidth}%"></div>
+          <!-- 자급자족 순수익 -->
+          <div>
+            <div style="font-size: 10px; color: var(--accent-cyan); margin-bottom: 1px;">🌲 자급자족</div>
+            <span style="font-size: 12px; font-weight: 800; color: ${res.netProfitSelf >= 0 ? '#2ecc71' : '#e74c3c'}">${profitSelfText} G</span>
           </div>
+        </div>
+        <div style="flex-shrink: 0; min-width: 60px; text-align: right;">
+          ${badgeHtml}
         </div>
       `;
 
