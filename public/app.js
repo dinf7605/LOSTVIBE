@@ -46,10 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
       foraging: { abidos: 52, oreha: 14, rare: 3.5, ancient: 15 }
     },
 
-    // 레시피 정보 (1회 제작=30개 기준 소모량)
+    // 레시피 정보 (1회 제작=10개 생산 기준 소모량 및 기본 영지 수수료)
     recipes: {
-      normal: { baseGold: 300, energy: 288, req: { abidos: 16, oreha: 64, rare: 80, ancient: 80 } },
-      superior: { baseGold: 350, energy: 360, req: { abidos: 24, oreha: 96, rare: 100, ancient: 100 } }
+      normal: { baseGold: 40, energy: 288, req: { abidos: 16, oreha: 64, rare: 80, ancient: 80 } },
+      superior: { baseGold: 52, energy: 360, req: { abidos: 24, oreha: 96, rare: 100, ancient: 100 } }
     },
 
     // 스펙 & 진단기 상태값
@@ -833,13 +833,20 @@ document.addEventListener('DOMContentLoaded', () => {
       (recipe.req.ancient / 100) * ancientPrice
     );
 
-    const discountedGoldCost = (recipe.baseGold || 0) * (1 - state.goldDiscount / 100);
+    // 영지 수수료 할인은 버림(Math.floor) 처리합니다.
+    const discountedGoldCost = Math.floor((recipe.baseGold || 0) * (1 - state.goldDiscount / 100));
     const totalCost = matCost + discountedGoldCost;
 
-    // 1회 제작 시 아비도스 융화재료 10개가 생산되므로 10배를 곱하여 매출을 올바르게 구하고 5% 경매장 수수료를 적용합니다.
-    const baseRevenue = 10 * (state.sellPrice || 0) * 0.95;
-    const bonusRevenue = baseRevenue * (state.greatSuccessRate / 100);
-    const totalRevenue = baseRevenue + bonusRevenue;
+    // 로아도쓰 기준: 대성공 확률은 합연산이 아닌 기본 5%에 대한 곱연산 보정입니다.
+    const finalGsRate = 0.05 * (1 + (state.greatSuccessRate / 100));
+    const expectedYield = 10 * (1 + finalGsRate); // 1회 기본 10개 + 대성공 기대 확률분
+
+    // 로스트아크 경매장 거래 수수료는 5%이며 소수점은 올림(Math.ceil) 차감합니다. 개당 순매출액을 구합니다.
+    const netItemPrice = Math.max(0, (state.sellPrice || 0) - Math.ceil((state.sellPrice || 0) * 0.05));
+    
+    const baseRevenue = 10 * netItemPrice; // 기본 10개 판매액
+    const bonusRevenue = 10 * netItemPrice * finalGsRate; // 대성공 보너스 기대 판매액
+    const totalRevenue = expectedYield * netItemPrice;
     const netProfit = totalRevenue - totalCost;
 
     ui.detailMatCost.textContent = `${matCost.toFixed(1)} G`;
@@ -911,12 +918,14 @@ document.addEventListener('DOMContentLoaded', () => {
         (recipe.req.ancient / 100) * ancientPrice
       );
       
-      const discountedGoldCost = (recipe.baseGold || 0) * (1 - state.goldDiscount / 100);
+      const discountedGoldCost = Math.floor((recipe.baseGold || 0) * (1 - state.goldDiscount / 100));
       const totalCost = matCost + discountedGoldCost;
 
-      const baseRevenue = 10 * (state.sellPrice || 0) * 0.95;
-      const bonusRevenue = baseRevenue * (state.greatSuccessRate / 100);
-      const totalRevenue = baseRevenue + bonusRevenue;
+      const finalGsRate = 0.05 * (1 + (state.greatSuccessRate / 100));
+      const expectedYield = 10 * (1 + finalGsRate);
+
+      const netItemPrice = Math.max(0, (state.sellPrice || 0) - Math.ceil((state.sellPrice || 0) * 0.05));
+      const totalRevenue = expectedYield * netItemPrice;
       const netProfit = totalRevenue - totalCost;
 
       return {
