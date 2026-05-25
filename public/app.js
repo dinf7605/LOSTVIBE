@@ -14,7 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 제작 효율 계산기 상태값
     craftType: 'normal',
     selectedSkill: 'archaeology',
-    sellPrice: 280,
+    sellPrice: 300,
+    fusionPrices: {
+      normal: 300,
+      superior: 380
+    },
+    defaultFusionPrices: {
+      normal: 300,
+      superior: 380
+    },
     greatSuccessRate: 5,
     goldDiscount: 0,
     
@@ -649,9 +657,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
+      // 융화재료 2종 실시간 조회 (CategoryCode: 50000) - 호출제한 대비 150ms 간격
+      const fusionTargets = [
+        { key: 'normal', name: '아비도스 융화 재료' },
+        { key: 'superior', name: '상급 아비도스 융화 재료' }
+      ];
+
+      for (const target of fusionTargets) {
+        try {
+          const fusionResponse = await fetch('/api/market', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-lostark-api-key': state.apiKey
+            },
+            body: JSON.stringify({
+              Sort: 'CURRENT_MIN_PRICE',
+              CategoryCode: 50000,
+              CharacterClass: '',
+              ItemGrade: '',
+              ItemName: target.name,
+              PageNo: 1,
+              SortCondition: 'ASC'
+            })
+          });
+
+          if (fusionResponse.ok) {
+            const fusionData = await fusionResponse.json();
+            const items = fusionData.Items || [];
+            const matched = items.find(i => i.Name === target.name) || items[0];
+            if (matched && matched.CurrentMinPrice > 0) {
+              state.fusionPrices[target.key] = matched.CurrentMinPrice;
+              console.log(`[아비도스 융화] ${target.name}: ${matched.CurrentMinPrice} G`);
+            }
+          }
+          await new Promise(resolve => setTimeout(resolve, 150));
+        } catch (err) {
+          console.warn(`[아비도스 융화] ${target.name} 조회 오류:`, err.message);
+        }
+      }
+
       if (successCount > 0) {
         lastCraftingFetchTime = Date.now();
         renderMaterialInputs();
+
+        // 현재 선택된 제작 아이템 판매가 자동 동기화
+        state.sellPrice = state.fusionPrices[state.craftType];
+        if (ui.inputSellPrice) {
+          ui.inputSellPrice.value = state.sellPrice;
+        }
+
         calculateCraftingEfficiency();
         const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
         if (ui.craftingPriceStatusText) {
@@ -677,6 +732,20 @@ document.addEventListener('DOMContentLoaded', () => {
               state.materialPrices[state.selectedSkill][key] = cached[key];
             }
           });
+
+          // 융화재료 캐시 시세 동기화
+          if (cacheData.fusionMaterials) {
+            ['normal', 'superior'].forEach(key => {
+              if (cacheData.fusionMaterials[key] && cacheData.fusionMaterials[key] > 0) {
+                state.fusionPrices[key] = cacheData.fusionMaterials[key];
+              }
+            });
+            state.sellPrice = state.fusionPrices[state.craftType];
+            if (ui.inputSellPrice) {
+              ui.inputSellPrice.value = state.sellPrice;
+            }
+          }
+
           renderMaterialInputs();
           calculateCraftingEfficiency();
           const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
@@ -851,6 +920,8 @@ document.addEventListener('DOMContentLoaded', () => {
       state.craftType = 'normal';
       ui.btnCraftNormal.classList.add('active');
       ui.btnCraftSuperior.classList.remove('active');
+      state.sellPrice = state.fusionPrices.normal;
+      if (ui.inputSellPrice) ui.inputSellPrice.value = state.sellPrice;
       calculateCraftingEfficiency();
     });
 
@@ -858,11 +929,15 @@ document.addEventListener('DOMContentLoaded', () => {
       state.craftType = 'superior';
       ui.btnCraftSuperior.classList.add('active');
       ui.btnCraftNormal.classList.remove('active');
+      state.sellPrice = state.fusionPrices.superior;
+      if (ui.inputSellPrice) ui.inputSellPrice.value = state.sellPrice;
       calculateCraftingEfficiency();
     });
 
     ui.inputSellPrice.addEventListener('input', (e) => {
-      state.sellPrice = parseFloat(e.target.value) || 0;
+      const val = parseFloat(e.target.value) || 0;
+      state.sellPrice = val;
+      state.fusionPrices[state.craftType] = val;
       calculateCraftingEfficiency();
     });
 
@@ -894,8 +969,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     ui.btnResetPrices.addEventListener('click', () => {
-      if (confirm('모든 생활 재료 시세를 기본값으로 리셋하시겠습니까?')) {
+      if (confirm('모든 생활 재료 및 융화재료 시세를 기본값으로 리셋하시겠습니까?')) {
         state.materialPrices = JSON.parse(JSON.stringify(state.defaultPrices));
+        state.fusionPrices = JSON.parse(JSON.stringify(state.defaultFusionPrices));
+        state.sellPrice = state.fusionPrices[state.craftType];
+        if (ui.inputSellPrice) ui.inputSellPrice.value = state.sellPrice;
         renderMaterialInputs();
         calculateCraftingEfficiency();
       }
@@ -1824,6 +1902,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initCalendarWidget();
 
     // 아비도스 제작 효율 계산기 초기화
+    state.sellPrice = state.fusionPrices[state.craftType];
+    if (ui.inputSellPrice) {
+      ui.inputSellPrice.value = state.sellPrice;
+    }
     renderMaterialInputs();
     bindCraftingEvents();
     calculateCraftingEfficiency();

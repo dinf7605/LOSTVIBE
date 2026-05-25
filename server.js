@@ -215,6 +215,7 @@ let liveMarketCache = {
   gems: null,
   engravings: null,
   craftingMaterials: null,
+  fusionMaterials: null,
   lastUpdated: null,
   error: null
 };
@@ -457,14 +458,63 @@ const startLiveMarketScheduler = () => {
         await new Promise(resolve => setTimeout(resolve, 300));
       }
 
+      // 융화재료 2종 실시간 시세 수집 (CategoryCode: 50000)
+      const fusionMaterialTargets = [
+        { key: 'normal', name: '아비도스 융화 재료' },
+        { key: 'superior', name: '상급 아비도스 융화 재료' }
+      ];
+
+      const fusionMaterials = {
+        normal: 0,
+        superior: 0
+      };
+
+      for (const target of fusionMaterialTargets) {
+        try {
+          const fusionRes = await fetch('https://developer-lostark.game.onstove.com/markets/items', {
+            method: 'POST',
+            headers: {
+              'accept': 'application/json',
+              'authorization': `bearer ${apiKey}`,
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              Sort: 'CURRENT_MIN_PRICE',
+              CategoryCode: 50000,
+              CharacterClass: '',
+              ItemGrade: '',
+              ItemName: target.name,
+              PageNo: 1,
+              SortCondition: 'ASC'
+            })
+          });
+
+          if (fusionRes.ok) {
+            const fusionData = await fusionRes.json();
+            const items = fusionData.Items || [];
+            if (items.length > 0) {
+              const matched = items.find(i => i.Name === target.name) || items[0];
+              fusionMaterials[target.key] = matched.CurrentMinPrice || 0;
+            }
+          } else {
+            console.warn(`[Scheduler] 융화재료 ${target.name} 조회 실패 (HTTP ${fusionRes.status})`);
+          }
+        } catch (e) {
+          console.warn(`[Scheduler] 융화재료 ${target.name} 조회 예외:`, e.message);
+        }
+        // Rate Limit 방어를 위한 300ms 딜레이
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
       // 캐시 갱신
       liveMarketCache.gems = processedGems;
       liveMarketCache.engravings = top15Engravings;
       liveMarketCache.craftingMaterials = craftingMaterials;
+      liveMarketCache.fusionMaterials = fusionMaterials;
       liveMarketCache.lastUpdated = Date.now();
       liveMarketCache.error = null;
 
-      console.log(`[Scheduler] 실시간 시세 수집 완료 및 캐시 갱신 성공! (보석 ${processedGems.length}종, 각인서 ${top15Engravings.length}종, 생활재료 24종)`);
+      console.log(`[Scheduler] 실시간 시세 수집 완료 및 캐시 갱신 성공! (보석 ${processedGems.length}종, 각인서 ${top15Engravings.length}종, 생활재료 24종, 융화재료 2종)`);
       
       // 매일 수집된 보석/각인서 가격 데이터를 영구 로컬 파일 DB에 누적 기록
       await saveDailyMarketHistory(processedGems, top15Engravings);
@@ -751,6 +801,7 @@ app.get('/api/market/live-dashboard', (req, res) => {
     gems: liveMarketCache.gems,
     engravings: liveMarketCache.engravings,
     craftingMaterials: liveMarketCache.craftingMaterials,
+    fusionMaterials: liveMarketCache.fusionMaterials,
     lastUpdated: liveMarketCache.lastUpdated,
     error: liveMarketCache.error
   });
