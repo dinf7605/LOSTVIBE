@@ -507,40 +507,139 @@
       <div class="view-header">
         <i data-lucide="gem"></i>
         <div>
-          <h2>낙원 지옥 보상 효율 계산기</h2>
-          <p>시즌 3의 고난도 타워 콘텐츠인 '낙원'의 클리어 보상 선택지들의 실시간 가치를 비교합니다.</p>
+          <h2>낙원 나락 & 지옥 보상 효율 계산기</h2>
+          <p>지옥 및 나락(5배 보상) 콘텐츠의 단계별 클리어 리워드를 실시간 시장 가격에 기반하여 완벽하게 가치 분석합니다.</p>
         </div>
       </div>
 
-      <div class="tab-toggle" style="margin-bottom: 25px;">
-        <button class="toggle-btn active" data-level="1640">1단계 (1640레벨)</button>
-        <button class="toggle-btn" data-level="1700">2단계 (1700레벨)</button>
-        <button class="toggle-btn" data-level="1730">3단계 (1730레벨)</button>
-      </div>
-
-      <div class="hell-layout">
-        <!-- 보상 목록 테이블 -->
-        <div class="hell-card-list" id="hell-rewards-container">
-          <!-- JS를 통해 동적으로 보상 카드를 정렬하여 렌더링 -->
-        </div>
-
-        <!-- 안내 요약 패널 -->
-        <div class="hell-summary-card">
-          <div class="summary-header">
-            <i data-lucide="award"></i>
-            <h3>금주의 낙원 보상 권장 가이드</h3>
-          </div>
-          <div class="best-pick-box">
-            <span class="label">가장 시세 가치가 높은 추천 보상</span>
-            <span class="best-value text-gold" id="txt-best-reward-name">불러오는 중...</span>
-            <div class="gold-box">
-              <span id="txt-best-reward-gold">0</span>
-              <span class="gold-unit">G 상당</span>
+      <div class="layout-split">
+        <!-- 설정 패널 (좌측) -->
+        <div class="input-panel glass-card">
+          <!-- 1) 콘텐츠 모드 선택 (일반 지옥 vs 나락) -->
+          <div class="input-section">
+            <h3>콘텐츠 모드 선택</h3>
+            <div class="tab-toggle" style="margin-bottom: 0;">
+              <button class="toggle-btn active" id="btn-hell-mode-normal" data-mode="normal">일반 지옥</button>
+              <button class="toggle-btn" id="btn-hell-mode-nether" data-mode="nether">나락의 지옥 (5배)</button>
             </div>
           </div>
-          <p class="summary-desc">
-            복원석, 공명석 등 4티어 재련 보조재료들의 실시간 경매장/거래소 시세를 반영하여 골드 가치로 환산한 순위입니다. 귀속 골드 보상 금액보다 원료 및 재료 가치가 더 높은 경우 재료 선택을 적극 권장합니다.
-          </p>
+
+          <!-- 2) 아이템 레벨 선택 -->
+          <div class="input-section">
+            <h3>캐릭터 아이템 레벨</h3>
+            <div class="tab-toggle" style="margin-bottom: 0;">
+              <button class="toggle-btn active" id="btn-hell-lvl-1640" data-level="1640">1640 Lv</button>
+              <button class="toggle-btn" id="btn-hell-lvl-1700" data-level="1700">1700 Lv</button>
+              <button class="toggle-btn" id="btn-hell-lvl-1730" data-level="1730">1730 Lv</button>
+            </div>
+          </div>
+
+          <!-- 3) 도달 층수 조절 (Range Slider) -->
+          <div class="input-section">
+            <div class="slider-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h3 style="margin: 0;">도달 층수 (단계)</h3>
+              <span class="slider-val text-cyan" id="val-hell-floor" style="font-size: 14px; font-weight: 800;">50층 (5단계 보상)</span>
+            </div>
+            <input type="range" id="slider-hell-floor" min="10" max="100" step="10" value="50" style="width: 100%;">
+            <p style="font-size: 10px; color: var(--text-dim); margin-top: 4px; margin-bottom: 0;">도달한 층수를 10으로 나눈 몫(단계)에 정비례하여 보상을 지급받습니다.</p>
+          </div>
+
+          <!-- 4) 풍요의 축복 토글 스위치 -->
+          <div class="input-section" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,215,0,0.03); border: 1px solid rgba(255,215,0,0.08); border-radius: var(--border-radius-md); padding: 12px 16px;">
+            <div>
+              <h3 style="margin: 0; color: var(--accent-gold); display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>풍요의 축복 (10배 보상)
+              </h3>
+              <p style="font-size: 10px; color: var(--text-dim); margin: 2px 0 0 0;">활성 시 재련석/공명석 재료 보상만 가치가 10배로 급증합니다.</p>
+            </div>
+            <label class="switch-control" style="position: relative; display: inline-block; width: 44px; height: 22px;">
+              <input type="checkbox" id="chk-hell-abundance" style="opacity: 0; width: 0; height: 0;">
+              <span class="switch-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.08); transition: .3s; border-radius: 20px; border: 1px solid var(--border-color);"></span>
+            </label>
+          </div>
+
+          <!-- 5) 실시간 시장 시세 조정 (Adjust Prices) -->
+          <div class="input-section" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; margin-top: 16px;">
+            <h3 style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 12px;" id="btn-toggle-hell-prices">
+              <i data-lucide="sliders" style="width: 14px; height: 14px; color: var(--accent-cyan);"></i>
+              시장 시세 개별 조정 (Adjust Prices)
+              <i data-lucide="chevron-down" style="width: 14px; height: 14px; margin-left: auto; transition: transform 0.2s;" id="icon-hell-prices-chevron"></i>
+            </h3>
+            
+            <div id="panel-hell-prices" style="display: flex; flex-direction: column; gap: 10px; transition: all 0.3s ease;">
+              <div class="input-row">
+                <label for="input-hell-leap">4티어 운명의 돌파석 (1개당)</label>
+                <input type="number" id="input-hell-leap" value="45" min="0">
+              </div>
+              <div class="input-row">
+                <label for="input-hell-dest">4티어 파괴석 결정 (10개당)</label>
+                <input type="number" id="input-hell-dest" value="12" min="0">
+              </div>
+              <div class="input-row">
+                <label for="input-hell-prot">4티어 수호석 결정 (10개당)</label>
+                <input type="number" id="input-hell-prot" value="2" min="0">
+              </div>
+              <div class="input-row">
+                <label for="input-hell-gem1">T4 1레벨 보석 시세</label>
+                <input type="number" id="input-hell-gem1" value="120" min="0">
+              </div>
+              <div class="input-row">
+                <label for="input-hell-fusion-normal">아비도스 융화재료 (1개당)</label>
+                <input type="number" id="input-hell-fusion-normal" value="280" min="0">
+              </div>
+              <div class="input-row">
+                <label for="input-hell-fusion-superior">상급 아비도스 융화재료 (1개당)</label>
+                <input type="number" id="input-hell-fusion-superior" value="340" min="0">
+              </div>
+              <div class="input-row">
+                <label for="input-hell-chaos">혼돈의 돌 (귀속 1개당 환산 가치)</label>
+                <input type="number" id="input-hell-chaos" value="500" min="0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 결과 및 랭킹 패널 (우측) -->
+        <div class="result-panel">
+          <!-- 최적 효율 골드 뱃지 보드 -->
+          <div class="hell-summary-card glass-card neon-gold-glow" style="margin-bottom: 20px; padding: 20px; border-radius: var(--border-radius-lg); position: relative; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 10px; margin-bottom: 12px;">
+              <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: var(--accent-gold); display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="crown" style="width: 15px; height: 15px;"></i>최종 분석 추천 보상
+              </h3>
+              <span class="profit-badge" style="background: hsla(45, 100%, 50%, 0.15); color: var(--accent-gold); border-color: rgba(255, 215, 0, 0.3); margin: 0;" id="txt-hell-efficiency-pct">효율 계산 중</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+              <div>
+                <span style="font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 2px;">가장 시장 가치가 높은 극효율 추천 보상</span>
+                <span id="txt-best-reward-name" style="font-size: 18px; font-weight: 800; color: var(--text-white);">로딩 중...</span>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 26px; font-weight: 900; color: var(--accent-gold); display: flex; align-items: center; gap: 2px; line-height: 1;">
+                  <span id="txt-best-reward-gold">0</span>
+                  <span style="font-size: 13px; font-weight: 700; color: var(--text-muted);">G 상당</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3개 보상 목록 랭킹 카드 컨테이너 -->
+          <div class="hell-card-list" id="hell-rewards-container" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- JS를 통해 동적으로 보상 카드를 실시간 랭킹 순으로 렌더링 -->
+          </div>
+
+          <!-- 세부 획득 아이템 목록 아코디언 -->
+          <div class="glass-card" style="margin-top: 18px; padding: 14px 18px; border-radius: var(--border-radius-md); background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.04);">
+            <h4 style="margin: 0; font-size: 12px; font-weight: 700; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="info" style="width: 13px; height: 13px; color: var(--accent-cyan);"></i>
+              나락/지옥 보상 효율 연산 산정 기준 안내
+            </h4>
+            <p style="font-size: 10px; color: var(--text-dim); margin: 6px 0 0 0; line-height: 1.5;">
+              - 보석의 경우 T4 4레벨(1레벨의 27배), 5레벨(81배), 6레벨(243배)에 해당하는 가치를 지수식으로 매칭합니다.<br>
+              - 돌파석 및 융화재료 등은 사용자가 조정한 시장 가격을 100% 실시간 대입합니다.<br>
+              - 귀속 골드는 층수에 완전히 연동되며, 나락 모드에서는 지옥 대비 모든 가치가 정확히 5배 곱하여 표시됩니다.
+            </p>
+          </div>
         </div>
       </div>
     </section>

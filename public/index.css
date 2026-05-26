@@ -2257,3 +2257,104 @@ button {
 .trend-flat {
   color: var(--text-dim);
 }
+
+
+/* ==========================================================================
+   PREMIUM HELL/NETHER CALCULATOR CUSTOM COMPONENTS
+   ========================================================================== */
+
+/* 유리 질감 카드 (Glassmorphism) */
+.glass-card {
+  background: rgba(255, 255, 255, 0.015) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 황금색 네온 광채 테두리 */
+.neon-gold-glow {
+  border: 1px solid rgba(255, 215, 0, 0.3) !important;
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.08), inset 0 0 12px rgba(255, 215, 0, 0.03) !important;
+}
+
+/* 사이안 네온 광채 테두리 */
+.neon-cyan-glow {
+  border: 1px solid rgba(100, 200, 255, 0.25) !important;
+  box-shadow: 0 0 20px rgba(100, 200, 255, 0.06), inset 0 0 10px rgba(100, 200, 255, 0.02) !important;
+}
+
+/* 토글 스위치 디자인 */
+.switch-control input:checked + .switch-slider {
+  background-color: var(--accent-gold) !important;
+  border-color: var(--accent-gold-glow) !important;
+}
+
+.switch-control input:checked + .switch-slider::before {
+  transform: translateX(20px) !important;
+  background-color: var(--bg-dark) !important;
+}
+
+.switch-slider::before {
+  content: '' !important;
+  position: absolute !important;
+  height: 14px !important;
+  width: 14px !important;
+  left: 3px !important;
+  bottom: 3px !important;
+  background-color: var(--text-muted) !important;
+  transition: .3s !important;
+  border-radius: 50% !important;
+}
+
+/* 아코디언 가격 조정 패널 숨김 애니메이션 */
+#panel-hell-prices.collapsed {
+  height: 0 !important;
+  overflow: hidden !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 층수 커스텀 슬라이더 */
+#slider-hell-floor {
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.06);
+  height: 6px;
+  border-radius: 3px;
+  outline: none;
+}
+
+#slider-hell-floor::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-cyan-glow);
+  transition: transform 0.1s ease;
+}
+
+#slider-hell-floor::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  background: var(--text-white);
+}
+
+/* 랭킹 카드 구조 보강 */
+.hell-reward-card-gold {
+  border: 1px solid rgba(255, 215, 0, 0.25) !important;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%) !important;
+}
+
+.hell-reward-card-cyan {
+  border: 1px solid rgba(0, 240, 255, 0.15) !important;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%) !important;
+}
+
+.hell-reward-card-standard {
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  background: rgba(255, 255, 255, 0.01) !important;
+}

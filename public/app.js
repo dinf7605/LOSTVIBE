@@ -54,20 +54,24 @@ document.addEventListener('DOMContentLoaded', () => {
       mungaLevel: 2
     },
 
-    // 낙원 지옥 보상 단계
-    hellLevel: '1640',
+    // 낙원 지옥 & 나락 보상 엔진 상태
+    hell: {
+      mode: 'normal', // 'normal' (일반 지옥) vs 'nether' (나락의 지옥, 5배)
+      level: '1640',  // '1640' / '1700' / '1730'
+      floor: 50,      // 10 ~ 100층 (10층 단위)
+      isAbundance: false, // 풍요의 축복 여부 (보상 10배)
+      isPricesCollapsed: true // 가격 조정 패널 접힘 상태
+    },
     
-    // 낙원 아이템 가격 참조 데이터 (실시간 시세 연동 및 환산용)
+    // 낙원 시세 데이터 (Adjust Market Prices 대응)
     hellPrices: {
-      restorationLow: 1200,
-      restorationMid: 2500,
-      restorationHigh: 5500,
-      resonanceLow: 400,
-      resonanceMid: 800,
-      resonanceHigh: 1800,
-      gemLvl4: 3500,
-      gemLvl5: 10500,
-      gemLvl6: 31500
+      t4Leapstone: 45,        // T4 운명의 돌파석 개당
+      t4Destruction: 12,      // T4 파괴석 결정 10개당
+      t4Protection: 2,        // T4 수호석 결정 10개당
+      t4GemLvl1: 120,         // T4 1레벨 보석 개당 (4레벨=27배, 5레벨=81배, 6레벨=243배 가치 자동 환산)
+      fusionNormal: 280,      // 아비도스 융화재료 1개당
+      fusionSuperior: 340,    // 상급 아비도스 융화재료 1개당
+      chaosStone: 500         // 혼돈의 돌 환산 가치
     },
 
     // 경매 분배금 계산기 상태값
@@ -186,11 +190,29 @@ document.addEventListener('DOMContentLoaded', () => {
     txtSonicDamage: document.getElementById('txt-sonic-damage'),
     txtSonicDesc: document.getElementById('txt-sonic-desc'),
 
-    // 낙원 지옥 보상 UI
-    hellLevelButtons: document.querySelectorAll('#page-hell .tab-toggle button'),
+    // 낙원 지옥 & 나락 보상 UI
+    hellModeNormalBtn: document.getElementById('btn-hell-mode-normal'),
+    hellModeNetherBtn: document.getElementById('btn-hell-mode-nether'),
+    hellLvlButtons: document.querySelectorAll('#page-hell .tab-toggle button[data-level]'),
+    hellFloorSlider: document.getElementById('slider-hell-floor'),
+    hellFloorVal: document.getElementById('val-hell-floor'),
+    hellAbundanceChk: document.getElementById('chk-hell-abundance'),
+    hellPricesToggleBtn: document.getElementById('btn-toggle-hell-prices'),
+    hellPricesChevronIcon: document.getElementById('icon-hell-prices-chevron'),
+    hellPricesPanel: document.getElementById('panel-hell-prices'),
+    hellEfficiencyPct: document.getElementById('txt-hell-efficiency-pct'),
     hellRewardsContainer: document.getElementById('hell-rewards-container'),
     txtBestRewardName: document.getElementById('txt-best-reward-name'),
     txtBestRewardGold: document.getElementById('txt-best-reward-gold'),
+    
+    // 시세 개별 조정 인풋
+    inputHellLeap: document.getElementById('input-hell-leap'),
+    inputHellDest: document.getElementById('input-hell-dest'),
+    inputHellProt: document.getElementById('input-hell-prot'),
+    inputHellGem1: document.getElementById('input-hell-gem1'),
+    inputHellFusionNormal: document.getElementById('input-hell-fusion-normal'),
+    inputHellFusionSuperior: document.getElementById('input-hell-fusion-superior'),
+    inputHellChaos: document.getElementById('input-hell-chaos'),
 
     // 경매 분배금 계산기 UI
     inputAuctionPrice: document.getElementById('input-auction-price'),
@@ -1277,82 +1299,288 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 7. 낙원 지옥 보상 효율 계산기 ===
 
+  // === 7. 낙원 나락 & 지옥 보상 효율 계산기 (lo4.app 스타일) ===
+
   function calculateHellRewards() {
     const prices = state.hellPrices;
-    const level = state.hellLevel;
-    let rewards = [];
+    const h = state.hell;
+    
+    // 10층 단위 비례 비율 (50층 = 0.5)
+    const floorRatio = Math.floor(h.floor / 10) / 10;
+    
+    // 나락 모드 여부에 따른 전체 배율 (지옥 1배 vs 나락 5배)
+    const modeMultiplier = h.mode === 'nether' ? 5 : 1;
+    
+    // 풍요 버프 여부에 따른 재련 재료 배율 (일반 1배 vs 풍요 10배)
+    const abundanceMultiplier = h.isAbundance ? 10 : 1;
 
-    if (level === '1640') {
-      const valA = (prices.restorationLow * 5) + (prices.resonanceLow * 15);
-      const valB = prices.gemLvl4;
-      const valC = 15000;
+    let matVal = 0;
+    let gemVal = 0;
+    let goldVal = 0;
+    let matDesc = '';
+    let gemDesc = '';
+    let goldDesc = '';
 
-      rewards = [
-        { name: '재련 보조재 패키지 (하급)', desc: `하급 복원석 5개 + 하급 공명석 15개`, gold: valA, icon: 'gem', type: 'material' },
-        { name: '4티어 보석 보상', desc: `4티어 4레벨 청화/홍염 보석 1개`, gold: valB, icon: 'shield', type: 'gem' },
-        { name: '순수 귀속 골드', desc: `즉시 획득 가능한 귀속 골드`, gold: valC, icon: 'coins', type: 'gold' }
-      ];
-    } else if (level === '1700') {
-      const valA = (prices.restorationMid * 5) + (prices.resonanceMid * 15);
-      const valB = prices.gemLvl5;
-      const valC = 25000;
+    // 레벨 구간별 10단계(100층) 기준 기본 보상 수량 매핑
+    if (h.level === '1640') {
+      // 1) 재련 재료 보상 가치
+      const destCount = 1500 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const protCount = 4500 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const leapCount = 60 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const fusionCount = 30 * floorRatio * modeMultiplier * abundanceMultiplier;
+      
+      matVal = (destCount / 10) * prices.t4Destruction + 
+               (protCount / 10) * prices.t4Protection + 
+               leapCount * prices.t4Leapstone + 
+               fusionCount * prices.fusionNormal;
+               
+      matDesc = `T4 파괴석 ${destCount.toLocaleString()}개 + 수호석 ${protCount.toLocaleString()}개 + 돌파석 ${leapCount.toLocaleString()}개 + 아비도스 융화재료 ${fusionCount.toLocaleString()}개`;
 
-      rewards = [
-        { name: '재련 보조재 패키지 (중급)', desc: `중급 복원석 5개 + 중급 공명석 15개`, gold: valA, icon: 'gem', type: 'material' },
-        { name: '4티어 보석 보상', desc: `4티어 5레벨 청화/홍염 보석 1개`, gold: valB, icon: 'shield', type: 'gem' },
-        { name: '순수 귀속 골드', desc: `즉시 획득 가능한 귀속 골드`, gold: valC, icon: 'coins', type: 'gold' }
-      ];
-    } else {
-      const valA = (prices.restorationHigh * 5) + (prices.resonanceHigh * 15);
-      const valB = prices.gemLvl6;
-      const valC = 40000;
+      // 2) 보석 보상 가치 (T4 4레벨 보석 2개 = T4 1레벨 보석 54개)
+      const gemCountLvl1 = 54 * floorRatio * modeMultiplier;
+      gemVal = gemCountLvl1 * prices.t4GemLvl1;
+      gemDesc = `T4 4레벨 보석 ${2 * floorRatio * modeMultiplier}개 분량 (T4 1레벨 보석 ${gemCountLvl1.toLocaleString()}개당 ${prices.t4GemLvl1}G 환산)`;
 
-      rewards = [
-        { name: '재련 보조재 패키지 (상급)', desc: `상급 복원석 5개 + 상급 공명석 15개`, gold: valA, icon: 'gem', type: 'material' },
-        { name: '4티어 보석 보상', desc: `4티어 6레벨 청화/홍염 보석 1개`, gold: valB, icon: 'shield', type: 'gem' },
-        { name: '순수 귀속 골드', desc: `즉시 획득 가능한 귀속 골드`, gold: valC, icon: 'coins', type: 'gold' }
-      ];
+      // 3) 귀속 골드 보상
+      goldVal = 15000 * floorRatio * modeMultiplier;
+      goldDesc = `콘텐츠 기본 지급 귀속 골드 (층수 및 모드 배율 완벽 반영)`;
+
+    } else if (h.level === '1700') {
+      // 1) 재련 재료 보상 가치
+      const destCount = 2500 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const protCount = 7500 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const leapCount = 100 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const fusionCount = 50 * floorRatio * modeMultiplier * abundanceMultiplier;
+      
+      matVal = (destCount / 10) * prices.t4Destruction + 
+               (protCount / 10) * prices.t4Protection + 
+               leapCount * prices.t4Leapstone + 
+               fusionCount * prices.fusionNormal;
+               
+      matDesc = `T4 파괴석 ${destCount.toLocaleString()}개 + 수호석 ${protCount.toLocaleString()}개 + 돌파석 ${leapCount.toLocaleString()}개 + 아비도스 융화재료 ${fusionCount.toLocaleString()}개`;
+
+      // 2) 보석 보상 가치 (T4 5레벨 보석 1개 = T4 1레벨 보석 81개)
+      const gemCountLvl1 = 81 * floorRatio * modeMultiplier;
+      gemVal = gemCountLvl1 * prices.t4GemLvl1;
+      gemDesc = `T4 5레벨 보석 ${1 * floorRatio * modeMultiplier}개 분량 (T4 1레벨 보석 ${gemCountLvl1.toLocaleString()}개당 ${prices.t4GemLvl1}G 환산)`;
+
+      // 3) 귀속 골드 보상
+      goldVal = 25000 * floorRatio * modeMultiplier;
+      goldDesc = `콘텐츠 기본 지급 귀속 골드 (층수 및 모드 배율 완벽 반영)`;
+
+    } else { // 1730 레벨
+      // 1) 재련 재료 보상 가치
+      const destCount = 4000 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const protCount = 12000 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const leapCount = 160 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const fusionCount = 80 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const chaosCount = 8 * floorRatio * modeMultiplier * abundanceMultiplier;
+      
+      matVal = (destCount / 10) * prices.t4Destruction + 
+               (protCount / 10) * prices.t4Protection + 
+               leapCount * prices.t4Leapstone + 
+               fusionCount * prices.fusionSuperior +
+               chaosCount * prices.chaosStone;
+               
+      matDesc = `T4 파괴석 ${destCount.toLocaleString()}개 + 수호석 ${protCount.toLocaleString()}개 + 돌파석 ${leapCount.toLocaleString()}개 + 상급 아비도스 ${fusionCount.toLocaleString()}개 + 혼돈의 돌 ${chaosCount.toLocaleString()}개`;
+
+      // 2) 보석 보상 가치 (T4 6레벨 보석 1개 = T4 1레벨 보석 243개)
+      const gemCountLvl1 = 243 * floorRatio * modeMultiplier;
+      gemVal = gemCountLvl1 * prices.t4GemLvl1;
+      gemDesc = `T4 6레벨 보석 ${1 * floorRatio * modeMultiplier}개 분량 (T4 1레벨 보석 ${gemCountLvl1.toLocaleString()}개당 ${prices.t4GemLvl1}G 환산)`;
+
+      // 3) 귀속 골드 보상
+      goldVal = 40000 * floorRatio * modeMultiplier;
+      goldDesc = `콘텐츠 기본 지급 귀속 골드 (층수 및 모드 배율 완벽 반영)`;
     }
 
+    const rewards = [
+      { name: '재련 재료 패키지 선택', desc: matDesc, gold: matVal, icon: 'gem', type: 'material' },
+      { name: '보석(젬) 상자 보상 선택', desc: gemDesc, gold: gemVal, icon: 'shield', type: 'gem' },
+      { name: '순수 귀속 골드 보상 선택', desc: goldDesc, gold: goldVal, icon: 'coins', type: 'gold' }
+    ];
+
+    // 가치(골드) 내림차순 랭킹 정렬
     rewards.sort((a, b) => b.gold - a.gold);
 
     ui.hellRewardsContainer.innerHTML = '';
+    
     rewards.forEach((reward, index) => {
-      const rankClass = index === 0 ? 'border-gold' : (index === 1 ? 'border-cyan' : '');
-      const badgeText = index === 0 ? '👑 1위 BEST' : `${index + 1}위`;
-      const badgeClass = index === 0 ? 'text-gold' : 'text-cyan';
+      const isBest = index === 0;
+      const isSecond = index === 1;
+      
+      let rankClass = 'hell-reward-card-standard';
+      let borderGlow = '';
+      if (isBest) {
+        rankClass = 'hell-reward-card-gold';
+        borderGlow = 'border: 1px solid rgba(255, 215, 0, 0.4) !important; box-shadow: 0 0 15px rgba(255, 215, 0, 0.05);';
+      } else if (isSecond) {
+        rankClass = 'hell-reward-card-cyan';
+        borderGlow = 'border: 1px solid rgba(100, 200, 255, 0.2) !important;';
+      }
+      
+      const badgeText = isBest ? '👑 1위 BEST CHOICE' : `${index + 1}위 선택지`;
+      const badgeColor = isBest ? 'color: var(--accent-gold);' : (isSecond ? 'color: var(--accent-cyan);' : 'color: var(--text-dim);');
 
       const card = document.createElement('div');
-      card.className = `hell-reward-card ${rankClass}`;
+      card.className = `hell-reward-card glass-card ${rankClass}`;
+      card.style.cssText = `
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 16px 20px;
+        border-radius: var(--border-radius-md);
+        margin-bottom: 8px;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+        cursor: default;
+        ${borderGlow}
+      `;
+      
+      card.addEventListener('mouseenter', () => {
+        card.style.transform = 'translateY(-2px)';
+      });
+      card.style.transition = 'all 0.2s ease';
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = 'translateY(0)';
+      });
+
       card.innerHTML = `
-        <div class="card-inner-layout" style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 20px; background: var(--bg-card); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 14px; flex-grow: 1;">
+          <div style="width: 38px; height: 38px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i data-lucide="${reward.icon}" style="width: 18px; height: 18px; color: ${isBest ? 'var(--accent-gold)' : 'var(--text-muted)'};"></i>
+          </div>
           <div>
-            <span class="rank-badge ${badgeClass}" style="font-size: 11px; font-weight: 800; display: block; margin-bottom: 6px;">${badgeText}</span>
-            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">${reward.name}</h3>
-            <p style="font-size: 12px; color: var(--text-muted);">${reward.desc}</p>
+            <span style="font-size: 10px; font-weight: 800; display: block; margin-bottom: 2px; ${badgeColor}">${badgeText}</span>
+            <h3 style="font-size: 14px; font-weight: 700; margin: 0 0 3px 0; color: var(--text-bright);">${reward.name}</h3>
+            <p style="font-size: 11px; color: var(--text-muted); margin: 0; line-height: 1.4;">${reward.desc}</p>
           </div>
-          <div style="text-align: right;">
-            <span style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 800; color: var(--text-white);">${reward.gold.toLocaleString()}</span>
-            <span style="font-size: 12px; color: var(--accent-gold); font-weight: 700; margin-left: 2px;">G 상당</span>
-          </div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0; min-width: 90px; margin-left: 15px;">
+          <span style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 800; color: ${isBest ? 'var(--accent-gold)' : 'var(--text-white)'};">${Math.round(reward.gold).toLocaleString()}</span>
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; margin-left: 1px;">G 상당</span>
         </div>
       `;
       ui.hellRewardsContainer.appendChild(card);
     });
 
+    // 1위 추천 보상 및 이득 퍼센티지 갱신
     const best = rewards[0];
+    const goldReward = rewards.find(r => r.type === 'gold');
+    const goldValBenchmark = goldReward ? goldReward.gold : 1;
+    
+    // 순수 골드 보상 대비 몇 퍼센트 효율이 더 잘 나오는지 이득 계산
+    const efficiencyPct = ((best.gold / goldValBenchmark) * 100).toFixed(1);
+    
     ui.txtBestRewardName.textContent = best.name;
-    ui.txtBestRewardGold.textContent = best.gold.toLocaleString();
+    ui.txtBestRewardGold.textContent = Math.round(best.gold).toLocaleString();
+    ui.hellEfficiencyPct.textContent = `순수 귀속 골드 대비 ${efficiencyPct}% 효율`;
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
   }
 
   function bindHellEvents() {
-    ui.hellLevelButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        ui.hellLevelButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        state.hellLevel = btn.getAttribute('data-level');
+    // 1) 콘텐츠 모드 선택 이벤트
+    if (ui.hellModeNormalBtn && ui.hellModeNetherBtn) {
+      ui.hellModeNormalBtn.addEventListener('click', () => {
+        ui.hellModeNormalBtn.classList.add('active');
+        ui.hellModeNetherBtn.classList.remove('active');
+        state.hell.mode = 'normal';
         calculateHellRewards();
       });
+      ui.hellModeNetherBtn.addEventListener('click', () => {
+        ui.hellModeNormalBtn.classList.remove('active');
+        ui.hellModeNetherBtn.classList.add('active');
+        state.hell.mode = 'nether';
+        calculateHellRewards();
+      });
+    }
+
+    // 2) 아이템 레벨 버튼 이벤트
+    ui.hellLvlButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        ui.hellLvlButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.hell.level = btn.getAttribute('data-level');
+        
+        // 아이템 레벨 변경 시 기본 시세 자동 세팅
+        if (state.hell.level === '1730') {
+          if (ui.inputHellLeap) ui.inputHellLeap.value = 75;
+          if (ui.inputHellDest) ui.inputHellDest.value = 16;
+          if (ui.inputHellProt) ui.inputHellProt.value = 3;
+          state.hellPrices.t4Leapstone = 75;
+          state.hellPrices.t4Destruction = 16;
+          state.hellPrices.t4Protection = 3;
+        } else {
+          if (ui.inputHellLeap) ui.inputHellLeap.value = 45;
+          if (ui.inputHellDest) ui.inputHellDest.value = 12;
+          if (ui.inputHellProt) ui.inputHellProt.value = 2;
+          state.hellPrices.t4Leapstone = 45;
+          state.hellPrices.t4Destruction = 12;
+          state.hellPrices.t4Protection = 2;
+        }
+        calculateHellRewards();
+      });
+    });
+
+    // 3) 층수 슬라이더 조절 이벤트
+    if (ui.hellFloorSlider && ui.hellFloorVal) {
+      ui.hellFloorSlider.addEventListener('input', (e) => {
+        const floor = parseInt(e.target.value) || 50;
+        state.hell.floor = floor;
+        const stage = Math.floor(floor / 10);
+        ui.hellFloorVal.textContent = `${floor}층 (${stage}단계 보상)`;
+        calculateHellRewards();
+      });
+    }
+
+    // 4) 풍요의 축복 토글 이벤트
+    if (ui.hellAbundanceChk) {
+      ui.hellAbundanceChk.addEventListener('change', (e) => {
+        state.hell.isAbundance = e.target.checked;
+        calculateHellRewards();
+      });
+    }
+
+    // 5) 시장 시세 조정 아코디언 토글
+    if (ui.hellPricesToggleBtn && ui.hellPricesPanel && ui.hellPricesChevronIcon) {
+      // 초기 상태: 접힘
+      ui.hellPricesPanel.classList.add('collapsed');
+      ui.hellPricesChevronIcon.style.transform = 'rotate(0deg)';
+      
+      ui.hellPricesToggleBtn.addEventListener('click', () => {
+        state.hell.isPricesCollapsed = !state.hell.isPricesCollapsed;
+        if (state.hell.isPricesCollapsed) {
+          ui.hellPricesPanel.classList.add('collapsed');
+          ui.hellPricesChevronIcon.style.transform = 'rotate(0deg)';
+        } else {
+          ui.hellPricesPanel.classList.remove('collapsed');
+          ui.hellPricesChevronIcon.style.transform = 'rotate(180deg)';
+        }
+      });
+    }
+
+    // 6) 시장 시세 조정 실시간 개별 인풋 리스너 바인딩
+    const inputsMap = [
+      { el: ui.inputHellLeap, key: 't4Leapstone' },
+      { el: ui.inputHellDest, key: 't4Destruction' },
+      { el: ui.inputHellProt, key: 't4Protection' },
+      { el: ui.inputHellGem1, key: 't4GemLvl1' },
+      { el: ui.inputHellFusionNormal, key: 'fusionNormal' },
+      { el: ui.inputHellFusionSuperior, key: 'fusionSuperior' },
+      { el: ui.inputHellChaos, key: 'chaosStone' }
+    ];
+
+    inputsMap.forEach(item => {
+      if (item.el) {
+        item.el.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value) || 0;
+          state.hellPrices[item.key] = val;
+          calculateHellRewards();
+        });
+      }
     });
   }
 
