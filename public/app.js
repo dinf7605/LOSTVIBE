@@ -1314,98 +1314,67 @@ document.addEventListener('DOMContentLoaded', () => {
     // 풍요 버프 여부에 따른 재련 재료 배율 (일반 1배 vs 풍요 10배)
     const abundanceMultiplier = h.isAbundance ? 10 : 1;
 
-    let matVal = 0;
-    let gemVal = 0;
-    let goldVal = 0;
-    let matDesc = '';
-    let gemDesc = '';
-    let goldDesc = '';
+    let rewardOptions = [];
 
     // 레벨 구간별 10단계(100층) 기준 기본 보상 수량 매핑
     if (h.level === '1640') {
-      // 1) 재련 재료 보상 가치
-      const destCount = 1500 * floorRatio * modeMultiplier * abundanceMultiplier;
-      const protCount = 4500 * floorRatio * modeMultiplier * abundanceMultiplier;
-      const leapCount = 60 * floorRatio * modeMultiplier * abundanceMultiplier;
-      const fusionCount = 30 * floorRatio * modeMultiplier * abundanceMultiplier;
-      
-      matVal = (destCount / 10) * prices.t4Destruction + 
-               (protCount / 10) * prices.t4Protection + 
-               leapCount * prices.t4Leapstone + 
-               fusionCount * prices.fusionNormal;
-               
-      matDesc = `T4 파괴석 ${destCount.toLocaleString()}개 + 수호석 ${protCount.toLocaleString()}개 + 돌파석 ${leapCount.toLocaleString()}개 + 아비도스 융화재료 ${fusionCount.toLocaleString()}개`;
+      const normalFusionQty = 120 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const leapstoneQty = 60 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const destQty = 1500 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const protQty = 4500 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const gemLvl1Qty = 54 * floorRatio * modeMultiplier; // 보석 풍요 제외
+      const goldQty = 15000 * floorRatio * modeMultiplier; // 골드 풍요 제외
 
-      // 2) 보석 보상 가치 (T4 4레벨 보석 2개 = T4 1레벨 보석 54개)
-      const gemCountLvl1 = 54 * floorRatio * modeMultiplier;
-      gemVal = gemCountLvl1 * prices.t4GemLvl1;
-      gemDesc = `T4 4레벨 보석 ${2 * floorRatio * modeMultiplier}개 분량 (T4 1레벨 보석 ${gemCountLvl1.toLocaleString()}개당 ${prices.t4GemLvl1}G 환산)`;
-
-      // 3) 귀속 골드 보상
-      goldVal = 15000 * floorRatio * modeMultiplier;
-      goldDesc = `콘텐츠 기본 지급 귀속 골드 (층수 및 모드 배율 완벽 반영)`;
-
+      rewardOptions = [
+        { name: '아비도스 융화 재료 수령', desc: `융화재료 ${Math.round(normalFusionQty).toLocaleString()}개 수령`, gold: normalFusionQty * prices.fusionNormal, icon: 'gem', type: 'material' },
+        { name: '운명의 돌파석 수령', desc: `T4 돌파석 ${Math.round(leapstoneQty).toLocaleString()}개 수령`, gold: leapstoneQty * prices.t4Leapstone, icon: 'shield', type: 'material' },
+        { name: '파괴석 결정 수령', desc: `T4 파괴석 ${Math.round(destQty).toLocaleString()}개 수령`, gold: (destQty / 10) * prices.t4Destruction, icon: 'zap', type: 'material' },
+        { name: '수호석 결정 수령', desc: `T4 수호석 ${Math.round(protQty).toLocaleString()}개 수령`, gold: (protQty / 10) * prices.t4Protection, icon: 'shield-alert', type: 'material' },
+        { name: 'T4 보석 상자 수령', desc: `T4 4레벨 보석 ${2 * floorRatio * modeMultiplier}개 분량 (1레벨 보석 ${Math.round(gemLvl1Qty).toLocaleString()}개 상당)`, gold: gemLvl1Qty * prices.t4GemLvl1, icon: 'award', type: 'gem' },
+        { name: '순수 귀속 골드 수령', desc: `귀속 골드 즉시 획득`, gold: goldQty, icon: 'coins', type: 'gold' }
+      ];
     } else if (h.level === '1700') {
-      // 1) 재련 재료 보상 가치
-      const destCount = 2500 * floorRatio * modeMultiplier * abundanceMultiplier;
-      const protCount = 7500 * floorRatio * modeMultiplier * abundanceMultiplier;
-      const leapCount = 100 * floorRatio * modeMultiplier * abundanceMultiplier;
-      const fusionCount = 50 * floorRatio * modeMultiplier * abundanceMultiplier;
-      
-      matVal = (destCount / 10) * prices.t4Destruction + 
-               (protCount / 10) * prices.t4Protection + 
-               leapCount * prices.t4Leapstone + 
-               fusionCount * prices.fusionNormal;
-               
-      matDesc = `T4 파괴석 ${destCount.toLocaleString()}개 + 수호석 ${protCount.toLocaleString()}개 + 돌파석 ${leapCount.toLocaleString()}개 + 아비도스 융화재료 ${fusionCount.toLocaleString()}개`;
+      const normalFusionQty = 200 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const leapstoneQty = 100 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const destQty = 2500 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const protQty = 7500 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const gemLvl1Qty = 81 * floorRatio * modeMultiplier;
+      const goldQty = 25000 * floorRatio * modeMultiplier;
 
-      // 2) 보석 보상 가치 (T4 5레벨 보석 1개 = T4 1레벨 보석 81개)
-      const gemCountLvl1 = 81 * floorRatio * modeMultiplier;
-      gemVal = gemCountLvl1 * prices.t4GemLvl1;
-      gemDesc = `T4 5레벨 보석 ${1 * floorRatio * modeMultiplier}개 분량 (T4 1레벨 보석 ${gemCountLvl1.toLocaleString()}개당 ${prices.t4GemLvl1}G 환산)`;
-
-      // 3) 귀속 골드 보상
-      goldVal = 25000 * floorRatio * modeMultiplier;
-      goldDesc = `콘텐츠 기본 지급 귀속 골드 (층수 및 모드 배율 완벽 반영)`;
-
+      rewardOptions = [
+        { name: '아비도스 융화 재료 수령', desc: `융화재료 ${Math.round(normalFusionQty).toLocaleString()}개 수령`, gold: normalFusionQty * prices.fusionNormal, icon: 'gem', type: 'material' },
+        { name: '운명의 돌파석 수령', desc: `T4 돌파석 ${Math.round(leapstoneQty).toLocaleString()}개 수령`, gold: leapstoneQty * prices.t4Leapstone, icon: 'shield', type: 'material' },
+        { name: '파괴석 결정 수령', desc: `T4 파괴석 ${Math.round(destQty).toLocaleString()}개 수령`, gold: (destQty / 10) * prices.t4Destruction, icon: 'zap', type: 'material' },
+        { name: '수호석 결정 수령', desc: `T4 수호석 ${Math.round(protQty).toLocaleString()}개 수령`, gold: (protQty / 10) * prices.t4Protection, icon: 'shield-alert', type: 'material' },
+        { name: 'T4 보석 상자 수령', desc: `T4 5레벨 보석 ${1 * floorRatio * modeMultiplier}개 분량 (1레벨 보석 ${Math.round(gemLvl1Qty).toLocaleString()}개 상당)`, gold: gemLvl1Qty * prices.t4GemLvl1, icon: 'award', type: 'gem' },
+        { name: '순수 귀속 골드 수령', desc: `귀속 골드 즉시 획득`, gold: goldQty, icon: 'coins', type: 'gold' }
+      ];
     } else { // 1730 레벨
-      // 1) 재련 재료 보상 가치
-      const destCount = 4000 * floorRatio * modeMultiplier * abundanceMultiplier;
-      const protCount = 12000 * floorRatio * modeMultiplier * abundanceMultiplier;
-      const leapCount = 160 * floorRatio * modeMultiplier * abundanceMultiplier;
-      const fusionCount = 80 * floorRatio * modeMultiplier * abundanceMultiplier;
-      const chaosCount = 8 * floorRatio * modeMultiplier * abundanceMultiplier;
-      
-      matVal = (destCount / 10) * prices.t4Destruction + 
-               (protCount / 10) * prices.t4Protection + 
-               leapCount * prices.t4Leapstone + 
-               fusionCount * prices.fusionSuperior +
-               chaosCount * prices.chaosStone;
-               
-      matDesc = `T4 파괴석 ${destCount.toLocaleString()}개 + 수호석 ${protCount.toLocaleString()}개 + 돌파석 ${leapCount.toLocaleString()}개 + 상급 아비도스 ${fusionCount.toLocaleString()}개 + 혼돈의 돌 ${chaosCount.toLocaleString()}개`;
+      const superiorFusionQty = 320 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const leapstoneQty = 160 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const destQty = 4000 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const protQty = 12000 * floorRatio * modeMultiplier * abundanceMultiplier;
+      const chaosQty = 8 * floorRatio * modeMultiplier; // 혼돈의 돌 풍요 제외
+      const gemLvl1Qty = 243 * floorRatio * modeMultiplier;
+      const goldQty = 40000 * floorRatio * modeMultiplier;
 
-      // 2) 보석 보상 가치 (T4 6레벨 보석 1개 = T4 1레벨 보석 243개)
-      const gemCountLvl1 = 243 * floorRatio * modeMultiplier;
-      gemVal = gemCountLvl1 * prices.t4GemLvl1;
-      gemDesc = `T4 6레벨 보석 ${1 * floorRatio * modeMultiplier}개 분량 (T4 1레벨 보석 ${gemCountLvl1.toLocaleString()}개당 ${prices.t4GemLvl1}G 환산)`;
-
-      // 3) 귀속 골드 보상
-      goldVal = 40000 * floorRatio * modeMultiplier;
-      goldDesc = `콘텐츠 기본 지급 귀속 골드 (층수 및 모드 배율 완벽 반영)`;
+      rewardOptions = [
+        { name: '상급 아비도스 융화재료 수령', desc: `상급 융화재료 ${Math.round(superiorFusionQty).toLocaleString()}개 수령`, gold: superiorFusionQty * prices.fusionSuperior, icon: 'gem', type: 'material' },
+        { name: '운명의 돌파석 수령', desc: `T4 돌파석 ${Math.round(leapstoneQty).toLocaleString()}개 수령`, gold: leapstoneQty * prices.t4Leapstone, icon: 'shield', type: 'material' },
+        { name: '파괴석 결정 수령', desc: `T4 파괴석 ${Math.round(destQty).toLocaleString()}개 수령`, gold: (destQty / 10) * prices.t4Destruction, icon: 'zap', type: 'material' },
+        { name: '수호석 결정 수령', desc: `T4 수호석 ${Math.round(protQty).toLocaleString()}개 수령`, gold: (protQty / 10) * prices.t4Protection, icon: 'shield-alert', type: 'material' },
+        { name: 'T4 보석 상자 수령', desc: `T4 6레벨 보석 ${1 * floorRatio * modeMultiplier}개 분량 (1레벨 보석 ${Math.round(gemLvl1Qty).toLocaleString()}개 상당)`, gold: gemLvl1Qty * prices.t4GemLvl1, icon: 'award', type: 'gem' },
+        { name: '정련된 혼돈의 돌 수령', desc: `혼돈의 돌 ${Math.round(chaosQty).toLocaleString()}개 수령`, gold: chaosQty * prices.chaosStone, icon: 'circle-dot', type: 'material' },
+        { name: '순수 귀속 골드 수령', desc: `귀속 골드 즉시 획득`, gold: goldQty, icon: 'coins', type: 'gold' }
+      ];
     }
 
-    const rewards = [
-      { name: '재련 재료 패키지 선택', desc: matDesc, gold: matVal, icon: 'gem', type: 'material' },
-      { name: '보석(젬) 상자 보상 선택', desc: gemDesc, gold: gemVal, icon: 'shield', type: 'gem' },
-      { name: '순수 귀속 골드 보상 선택', desc: goldDesc, gold: goldVal, icon: 'coins', type: 'gold' }
-    ];
-
     // 가치(골드) 내림차순 랭킹 정렬
-    rewards.sort((a, b) => b.gold - a.gold);
+    rewardOptions.sort((a, b) => b.gold - a.gold);
 
     ui.hellRewardsContainer.innerHTML = '';
     
-    rewards.forEach((reward, index) => {
+    rewardOptions.forEach((reward, index) => {
       const isBest = index === 0;
       const isSecond = index === 1;
       
@@ -1465,8 +1434,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 1위 추천 보상 및 이득 퍼센티지 갱신
-    const best = rewards[0];
-    const goldReward = rewards.find(r => r.type === 'gold');
+    const best = rewardOptions[0];
+    const goldReward = rewardOptions.find(r => r.type === 'gold');
     const goldValBenchmark = goldReward ? goldReward.gold : 1;
     
     // 순수 골드 보상 대비 몇 퍼센트 효율이 더 잘 나오는지 이득 계산

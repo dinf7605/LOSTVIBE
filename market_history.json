@@ -782,5 +782,103 @@
         "CurrentMinPrice": 1378
       }
     ]
+  },
+  "2026-05-26": {
+    "gems": [
+      {
+        "Name": "10레벨 겁화의 보석",
+        "CurrentMinPrice": 3135000
+      },
+      {
+        "Name": "10레벨 작열의 보석",
+        "CurrentMinPrice": 3079000
+      },
+      {
+        "Name": "9레벨 겁화의 보석",
+        "CurrentMinPrice": 1090000
+      },
+      {
+        "Name": "9레벨 작열의 보석",
+        "CurrentMinPrice": 1099999
+      },
+      {
+        "Name": "8레벨 겁화의 보석",
+        "CurrentMinPrice": 374500
+      },
+      {
+        "Name": "8레벨 작열의 보석",
+        "CurrentMinPrice": 374000
+      },
+      {
+        "Name": "7레벨 겁화의 보석",
+        "CurrentMinPrice": 126222
+      },
+      {
+        "Name": "7레벨 작열의 보석",
+        "CurrentMinPrice": 126200
+      }
+    ],
+    "engravings": [
+      {
+        "Name": "유물 원한",
+        "CurrentMinPrice": 183399
+      },
+      {
+        "Name": "유물 돌격대장",
+        "CurrentMinPrice": 181000
+      },
+      {
+        "Name": "유물 예리한 둔기",
+        "CurrentMinPrice": 167500
+      },
+      {
+        "Name": "유물 아드레날린",
+        "CurrentMinPrice": 153200
+      },
+      {
+        "Name": "유물 질량 증가",
+        "CurrentMinPrice": 102500
+      },
+      {
+        "Name": "유물 기습의 대가",
+        "CurrentMinPrice": 59660
+      },
+      {
+        "Name": "유물 각성",
+        "CurrentMinPrice": 41489
+      },
+      {
+        "Name": "유물 저주받은 인형",
+        "CurrentMinPrice": 40998
+      },
+      {
+        "Name": "유물 타격의 대가",
+        "CurrentMinPrice": 35700
+      },
+      {
+        "Name": "유물 전문의",
+        "CurrentMinPrice": 29199
+      },
+      {
+        "Name": "유물 슈퍼 차지",
+        "CurrentMinPrice": 23500
+      },
+      {
+        "Name": "유물 결투의 대가",
+        "CurrentMinPrice": 21500
+      },
+      {
+        "Name": "유물 마나의 흐름",
+        "CurrentMinPrice": 1900
+      },
+      {
+        "Name": "유물 구슬동자",
+        "CurrentMinPrice": 1799
+      },
+      {
+        "Name": "유물 중갑 착용",
+        "CurrentMinPrice": 1000
+      }
+    ]
   }
 }
